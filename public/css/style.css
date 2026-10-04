@@ -4347,6 +4347,18 @@ body:is(.perf, .os-reduced) .float-txt {
   filter: drop-shadow(0 0 10px rgba(255, 0, 100, 0.8)) drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
   position: relative;
 }
+.pname.fx-rainbowblood::before {
+  content: '🩸 ⭐ 🩸 ✨';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 100%;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  animation: bloodFloatUp 3s ease-in infinite;
+  -webkit-text-fill-color: initial;
+}
 @keyframes pname-rainbowblood {
   0% { background-position: 0% 50%; }
   100% { background-position: 300% 50%; }
