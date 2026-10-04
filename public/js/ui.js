@@ -3,7 +3,7 @@
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v20261003bh';
+import * as Engine from './engine.js?v20261003bi';
 import { Audio } from './audio.js?v=20261003bg';
 import { api } from './api.js?v=20260930ar';
 

@@ -4132,6 +4132,7 @@ export const STAFF_NAME_FX = [
   { id: 'archlight',   name: '📐 Archlight',   desc: 'Staff only. Drawn in lines of cold light.',       staffOnly: true, staffRole: 'admin' },
   { id: 'shadowcrown', name: '👑 Shadowcrown', desc: 'Staff only. The throne casts a long shadow.',     staffOnly: true, staffRole: 'owner' },
   { id: 'everflame',   name: '♾️ Everflame',    desc: 'Staff only. It has always burned. It always will.', staffOnly: true, staffRole: 'owner' },
+  { id: 'rainbowblood', name: '🩸🌈 Rainbow Blood', desc: 'Owner only. Blood and stars rise from the rainbow.', staffOnly: true, staffRole: 'owner' },
 ];
 
 // Name effects free for everyone (everything in the old picker).
