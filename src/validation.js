@@ -210,6 +210,22 @@ function sanitizeStateBlob(blob) {
       }
     }
   }
+  // Pet level cap: pets can't exceed player level (anti-inflation).
+  // Clamp any over-leveled pets from before the cap was introduced.
+  if (blob.pets && typeof blob.pets === 'object' && !Array.isArray(blob.pets)) {
+    const playerLevel = Math.max(1, Math.floor(blob.level || 1));
+    const coll = blob.pets.collection;
+    if (Array.isArray(coll)) {
+      for (const pet of coll) {
+        if (pet && typeof pet === 'object' && typeof pet.level === 'number') {
+          if (pet.level > playerLevel) {
+            pet.level = playerLevel;
+            pet.xp = 0;
+          }
+        }
+      }
+    }
+  }
   return { ok: true, state: blob };
 }
 

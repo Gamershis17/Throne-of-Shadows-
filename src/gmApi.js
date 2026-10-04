@@ -2310,7 +2310,6 @@ router.post(
   '/gm/create-op-gear',
   ownerOnly,
   asyncHandler(async (req, res) => {
-    try {
     const { username, name, slot, rarity, stats } = req.body || {};
     const target = await resolveTarget(username);
     if (!target) return res.status(404).json({ error: 'Target user not found.' });
@@ -2349,10 +2348,82 @@ router.post(
     const live = pushStateUpdate(target.id, { inventory: blob.inventory });
     await logAudit(req, 'create-op-gear', target.username, `${name} (${slot})${live ? ' [LIVE]' : ''}`);
     res.json({ ok: true, live, item });
-    } catch (e) {
-      console.error('[create-op-gear] ERROR:', e && e.message, e && e.stack);
-      return res.status(500).json({ error: 'Debug: ' + (e && e.message) });
+  })
+);
+
+// ---------- stage reset (stat-fix) ----------
+// Backs up ALL player blobs, then resets every player's stage to 1.
+// Owner only. One-time use for the Oct 2026 pet-stat fix.
+router.post(
+  '/gm/reset-all-stages',
+  ownerOnly,
+  asyncHandler(async (req, res) => {
+    const { confirm } = req.body || {};
+    if (confirm !== 'RESET-TO-STAGE-1') {
+      return res.status(400).json({ error: 'Confirmation required.' });
     }
+    // Backup all player blobs first
+    const { rows } = await pool.query(
+      `SELECT u.id, u.username, ps.state_json
+       FROM player_state ps JOIN users u ON u.id = ps.user_id`
+    );
+    let backedUp = 0;
+    for (const r of rows) {
+      await pool.query(
+        `INSERT INTO stage_reset_backup (user_id, username, state_json)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET username = $2, state_json = $3, backed_up_at = now()`,
+        [r.id, r.username, r.state_json]
+      );
+      backedUp++;
+    }
+    // Reset all stages to 1
+    let reset = 0;
+    for (const r of rows) {
+      const blob = typeof r.state_json === 'string' ? JSON.parse(r.state_json) : r.state_json;
+      blob.stage = 1;
+      await persistMergedState(r.id, blob);
+      // Live-push to online players
+      pushStateUpdate(r.id, { stage: 1 });
+      reset++;
+    }
+    await logAudit(req, 'reset-all-stages', 'ALL', `backed up ${backedUp}, reset ${reset} to stage 1`);
+    res.json({ ok: true, backedUp, reset });
+  })
+);
+
+// ---------- restore player from pre-reset backup ----------
+// Owner only. Restores a single player's pre-reset blob.
+router.post(
+  '/gm/restore-player',
+  ownerOnly,
+  asyncHandler(async (req, res) => {
+    const { username } = req.body || {};
+    const target = await resolveTarget(username);
+    if (!target) return res.status(404).json({ error: 'Target user not found.' });
+    const { rows } = await pool.query(
+      'SELECT state_json FROM stage_reset_backup WHERE user_id = $1',
+      [target.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'No backup found for this player.' });
+    const blob = typeof rows[0].state_json === 'string' ? JSON.parse(rows[0].state_json) : rows[0].state_json;
+    await persistMergedState(target.id, blob);
+    // Live-push full state to the player if online
+    const live = pushStateUpdate(target.id, blob);
+    await logAudit(req, 'restore-player', target.username, `restored pre-reset backup${live ? ' [LIVE]' : ''}`);
+    res.json({ ok: true, live });
+  })
+);
+
+// ---------- list reset backups ----------
+router.get(
+  '/gm/reset-backups',
+  ownerOnly,
+  asyncHandler(async (req, res) => {
+    const { rows } = await pool.query(
+      'SELECT username, backed_up_at FROM stage_reset_backup ORDER BY username'
+    );
+    res.json({ ok: true, backups: rows });
   })
 );
 

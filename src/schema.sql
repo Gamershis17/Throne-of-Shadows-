@@ -252,3 +252,12 @@ CREATE TABLE IF NOT EXISTS social_posts (
   created_at BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS social_posts_created_idx ON social_posts (created_at DESC);
+-- Pre-reset backup for the Stage 1 stat-fix reset (Oct 2026).
+-- Stores full player blobs before the reset so the owner can restore
+-- individual players on request.
+CREATE TABLE IF NOT EXISTS stage_reset_backup (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  username TEXT NOT NULL,
+  state_json JSONB NOT NULL,
+  backed_up_at TIMESTAMPTZ DEFAULT now()
+);
