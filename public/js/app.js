@@ -1997,6 +1997,14 @@ function useSpell(id) {
       meterHit('pet', 'Pet', dmg);
       damageEnemy(dmg, '', '🐾 ');
       UI.combatLog(`🐺 Kill Command! Your pet strikes for ${formatNum(dmg)}.`, 'skill');
+      // Apply bleed debuff if specified
+      if (App.enemy && fx.debuffKind) {
+        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.25));
+        Engine.addDebuff(App.enemy, fx.debuffKind, dotValue, fx.debuffSec || 10);
+        const def = Engine.DEBUFF_DEFS[fx.debuffKind];
+        UI.combatLog(`${def.icon} ${def.name} applied to enemy!`, 'skill');
+        if (window.UI && UI.updateEnemy) UI.updateEnemy(App.enemy);
+      }
       break;
     }
     case 'trap':
@@ -2020,6 +2028,17 @@ function useSpell(id) {
       if (fx.atkPct) Engine.addBuff(s, 'atkPct', fx.atkPct, fx.sec);
       if (fx.dmgTakenPct) Engine.addBuff(s, 'dmgTakenPct', fx.dmgTakenPct, fx.sec);
       UI.combatLog(`📯 ${def.name}!`, 'skill');
+      break;
+    }
+    case 'debuff': {
+      if (fx.mult) heroStrike(stats, fx.mult * mMult);
+      if (App.enemy && fx.debuffKind) {
+        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.5));
+        Engine.addDebuff(App.enemy, fx.debuffKind, dotValue, fx.debuffSec || 10);
+        const def = Engine.DEBUFF_DEFS[fx.debuffKind];
+        UI.combatLog(`${def.icon} ${def.name} applied to enemy!`, 'skill');
+        if (window.UI && UI.updateEnemy) UI.updateEnemy(App.enemy);
+      }
       break;
     }
     case 'dodge': {
