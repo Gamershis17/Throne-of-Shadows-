@@ -705,7 +705,7 @@ router.post(
   '/gm/set-level',
   gmOrOwner,
   asyncHandler(async (req, res) => {
-    const { username, level } = req.body || {};
+    const { username, level, rebirths } = req.body || {};
     const target = await resolveTarget(username);
     if (!target) return res.status(404).json({ error: 'Target user not found.' });
     if (!Number.isInteger(level) || level < 1 || level > GM_MAX_LEVEL) {
@@ -718,11 +718,16 @@ router.post(
     hero.defense = 2 + 2 * (level - 1);
     blob.level = level;
     blob.xp = 0;
-    blob.rebirthCount = Math.max(0, Math.floor(Number(blob.rebirthCount) || 0));
+    // Optional rebirth reset (for fixing corrupted rebirth counts)
+    if (rebirths !== undefined && Number.isInteger(rebirths) && rebirths >= 0) {
+      blob.rebirthCount = rebirths;
+    } else {
+      blob.rebirthCount = Math.max(0, Math.floor(Number(blob.rebirthCount) || 0));
+    }
     blob.xpNext = xpForLevelServer(level, blob.rebirthCount);
     hero.hp = hero.maxHp;
     await persistMergedState(target.id, blob);
-    const live = pushStateUpdate(target.id, { level, xp: 0, xpNext: blob.xpNext, hero });
+    const live = pushStateUpdate(target.id, { level, xp: 0, xpNext: blob.xpNext, hero, rebirthCount: blob.rebirthCount });
     await logAudit(req, 'set-level', target.username, `level → ${level}${live ? ' [LIVE]' : ''}`);
     res.json({ ok: true, live, state: selfState(req, target, blob) });
   })
