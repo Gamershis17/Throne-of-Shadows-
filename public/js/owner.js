@@ -114,45 +114,55 @@
       } catch (e) { showErr('❌ ' + e.message); }
     });
 
-    // Stage reset & restore
-    bind('reset-stages-btn', async () => {
-      const confirmText = $('reset-confirm').value.trim();
-      if (confirmText !== 'RESET-TO-STAGE-1') {
-        $('reset-err').textContent = '❌ Type RESET-TO-STAGE-1 in the box first.';
-        $('reset-err').style.color = '#f66';
-        return;
+    // Stage reset & restore (uses direct binding to avoid scope issues)
+    (() => {
+      const resetBtn = $('reset-stages-btn');
+      if (resetBtn && !resetBtn.dataset.wired) {
+        resetBtn.dataset.wired = '1';
+        resetBtn.addEventListener('click', async () => {
+          const confirmText = ($('reset-confirm') || {}).value?.trim() || '';
+          if (confirmText !== 'RESET-TO-STAGE-1') {
+            $('reset-err').textContent = '❌ Type RESET-TO-STAGE-1 in the box first.';
+            $('reset-err').style.color = '#f66';
+            return;
+          }
+          if (!confirm('Reset ALL players to Stage 1? Backups will be saved first. This cannot be undone except via individual restore.')) return;
+          try {
+            const { ok, j } = await api('/api/gm/reset-all-stages', { method: 'POST', body: JSON.stringify({ confirm: confirmText }) });
+            if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
+            $('reset-err').textContent = `✅ Backed up ${j.backedUp}, reset ${j.reset} players to Stage 1.`;
+            $('reset-err').style.color = '#4f4';
+            logAudit(`Stage reset: ${j.reset} players`);
+          } catch (e) {
+            $('reset-err').textContent = '❌ ' + e.message;
+            $('reset-err').style.color = '#f66';
+          }
+        });
       }
-      if (!confirm('Reset ALL players to Stage 1? Backups will be saved first. This cannot be undone except via individual restore.')) return;
-      try {
-        const { ok, j } = await api('/api/gm/reset-all-stages', { method: 'POST', body: JSON.stringify({ confirm: confirmText }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        $('reset-err').textContent = `✅ Backed up ${j.backedUp}, reset ${j.reset} players to Stage 1.`;
-        $('reset-err').style.color = '#4f4';
-        logAudit(`Stage reset: ${j.reset} players`);
-      } catch (e) {
-        $('reset-err').textContent = '❌ ' + e.message;
-        $('reset-err').style.color = '#f66';
+      const restoreBtn = $('restore-btn');
+      if (restoreBtn && !restoreBtn.dataset.wired) {
+        restoreBtn.dataset.wired = '1';
+        restoreBtn.addEventListener('click', async () => {
+          const u = (($('restore-user') || {}).value || '').trim();
+          if (!u) {
+            $('restore-err').textContent = '❌ Enter a username.';
+            $('restore-err').style.color = '#f66';
+            return;
+          }
+          if (!confirm(`Restore ${u}'s pre-reset progress?`)) return;
+          try {
+            const { ok, j } = await api('/api/gm/restore-player', { method: 'POST', body: JSON.stringify({ username: u }) });
+            if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
+            $('restore-err').textContent = `✅ Restored ${u}'s progress${j.live ? ' (live!)' : ''}.`;
+            $('restore-err').style.color = '#4f4';
+            logAudit(`Restore player → ${u}`);
+          } catch (e) {
+            $('restore-err').textContent = '❌ ' + e.message;
+            $('restore-err').style.color = '#f66';
+          }
+        });
       }
-    });
-    bind('restore-btn', async () => {
-      const u = $('restore-user').value.trim();
-      if (!u) {
-        $('restore-err').textContent = '❌ Enter a username.';
-        $('restore-err').style.color = '#f66';
-        return;
-      }
-      if (!confirm(`Restore ${u}'s pre-reset progress?`)) return;
-      try {
-        const { ok, j } = await api('/api/gm/restore-player', { method: 'POST', body: JSON.stringify({ username: u }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        $('restore-err').textContent = `✅ Restored ${u}'s progress${j.live ? ' (live!)' : ''}.`;
-        $('restore-err').style.color = '#4f4';
-        logAudit(`Restore player → ${u}`);
-      } catch (e) {
-        $('restore-err').textContent = '❌ ' + e.message;
-        $('restore-err').style.color = '#f66';
-      }
-    });
+    })();
   }
   // Live progression overrides
   function initProgression() {
