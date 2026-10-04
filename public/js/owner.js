@@ -4,6 +4,11 @@
     const r = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
     return r.json().then(j => ({ ok: r.ok, j }));
   };
+  // Global bind helper for owner panel buttons
+  function bind(id, handler) {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.wired) { el.dataset.wired = '1'; el.addEventListener('click', handler); }
+  }
   // Clock
   setInterval(() => { const c = $('owner-clock'); if (c) c.textContent = new Date().toLocaleString(); }, 1000);
   // Tabs
