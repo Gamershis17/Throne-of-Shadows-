@@ -4,587 +4,230 @@
     const r = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
     return r.json().then(j => ({ ok: r.ok, j }));
   };
-  // Global bind helper for owner panel buttons
+  // Global bind helper
   function bind(id, handler) {
     const el = document.getElementById(id);
     if (el && !el.dataset.wired) { el.dataset.wired = '1'; el.addEventListener('click', handler); }
   }
+
   // Clock
   setInterval(() => { const c = $('owner-clock'); if (c) c.textContent = new Date().toLocaleString(); }, 1000);
+
   // Tabs
-  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.owner-tab-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.owner-tab-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
-    $('pane-' + b.dataset.tab).classList.remove('hidden');
+    document.querySelectorAll('.owner-tab-pane').forEach(p => p.classList.add('hidden'));
+    const pane = $('tab-' + b.dataset.tab);
+    if (pane) pane.classList.remove('hidden');
   }));
+
   // Login
-  // Login (click or Enter)
-  const doLogin = async () => {
+  async function doLogin() {
     $('login-err').textContent = '';
     const { ok, j } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: $('login-user').value.trim(), password: $('login-pass').value }) });
     if (!ok || !j.user) { $('login-err').textContent = (j && j.error) || 'Login failed.'; return; }
-    // Verify owner role
-    const me = await api('/api/auth/me');
-    const user = me.j && (me.j.user || me.j);
-    if (!me.ok || !user || user.role !== 'owner') {
-      $('login-err').textContent = '⛔ Owner only. Your role: ' + ((user && user.role) || 'unknown');
-      await api('/api/auth/logout', { method: 'POST' });
+    const me = await api('/api/auth/me').then(r => r.j.user || r.j);
+    if (!me || me.role !== 'owner') {
+      $('login-err').textContent = '⛔ Owner only. Your role: ' + ((me && me.role) || 'unknown');
       return;
     }
     $('login-pane').classList.add('hidden');
     $('owner-pane').classList.remove('hidden');
-    $('owner-who').textContent = 'Signed in as ' + user.username + ' (owner)';
-    loadAll();
-  };
-  $('login-btn').addEventListener('click', doLogin);
+    $('owner-who').textContent = 'Signed in as ' + me.username + ' (owner)';
+  }
+  bind('login-btn', doLogin);
   $('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
   $('login-user').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
-  async function loadAll() {
-    loadRoster(); checkMaint();
-    setInterval(loadRoster, 30000);
-    initMultipliers();
-    initPlayerModal();
-    initRoleSetter();
-    initProgression();
-    initGearFactory();
-    initGiveTools();
-  }
-  // Give tools (quick grants + clear bags)
-  function initGiveTools() {
-    const err = $('give-err');
-    const getUser = () => (($('give-user') || {}).value || '').trim();
-    const showErr = (msg, ok) => {
-      err.style.color = ok ? '#4f4' : '#f66';
-      err.textContent = msg;
-    };
-    const needUser = () => {
-      const u = getUser();
-      if (!u) { showErr('❌ Enter a target username.'); return null; }
-      return u;
-    };
-    const bind = (id, fn) => {
-      const btn = $(id);
-      if (btn && !btn.dataset.wired) { btn.dataset.wired = '1'; btn.addEventListener('click', fn); }
-    };
-    bind('give-gold-btn', async () => {
-      const u = needUser(); if (!u) return;
-      const amt = parseInt(($('give-gold') || {}).value) || 0;
-      if (amt <= 0) { showErr('❌ Enter a gold amount.'); return; }
-      try {
-        const { ok, j } = await api('/api/gm/set-gold', { method: 'POST', body: JSON.stringify({ username: u, amount: amt }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        showErr(`✅ Gave ${amt.toLocaleString()} gold to ${u}`, true);
-        logAudit(`Give gold: ${amt} → ${u}`);
-      } catch (e) { showErr('❌ ' + e.message); }
-    });
-    bind('give-rebirth-btn', async () => {
-      const u = needUser(); if (!u) return;
-      const amt = parseInt(($('give-rebirth') || {}).value) || 0;
-      if (amt <= 0) { showErr('❌ Enter a token amount.'); return; }
-      try {
-        const { ok, j } = await api('/api/gm/set-rebirth', { method: 'POST', body: JSON.stringify({ username: u, count: amt }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        showErr(`✅ Gave ${amt} rebirth tokens to ${u}`, true);
-        logAudit(`Give tokens: ${amt} → ${u}`);
-      } catch (e) { showErr('❌ ' + e.message); }
-    });
-    bind('give-buff-btn', async () => {
-      const u = needUser(); if (!u) return;
-      try {
-        for (const type of ['damage', 'xp', 'gold']) {
-          await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: type, value: 50, duration: 3600 }) });
-        }
-        showErr(`✅ +50% damage/XP/gold (1h) → ${u}`, true);
-        logAudit(`Buffs granted → ${u}`);
-      } catch (e) { showErr('❌ ' + e.message); }
-    });
-    bind('give-heal-btn', async () => {
-      const u = needUser(); if (!u) return;
-      try {
-        const { ok, j } = await api('/api/gm/heal', { method: 'POST', body: JSON.stringify({ username: u }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        showErr(`✅ Healed ${u}`, true);
-        logAudit(`Heal → ${u}`);
-      } catch (e) { showErr('❌ ' + e.message); }
-    });
-    bind('give-clear-btn', async () => {
-      const u = needUser(); if (!u) return;
-      if (!confirm(`Clear ${u}'s bags? (keeps equipped items)`)) return;
-      try {
-        const { ok, j } = await api('/api/gm/clear-bags', { method: 'POST', body: JSON.stringify({ username: u }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        showErr(`✅ Cleared ${u}'s bags`, true);
-        logAudit(`Clear bags → ${u}`);
-      } catch (e) { showErr('❌ ' + e.message); }
-    });
 
-    // Stage reset & restore (uses direct binding to avoid scope issues)
-    (() => {
-      const resetBtn = $('reset-stages-btn');
-      if (resetBtn && !resetBtn.dataset.wired) {
-        resetBtn.dataset.wired = '1';
-        resetBtn.addEventListener('click', async () => {
-          const confirmText = ($('reset-confirm') || {}).value?.trim() || '';
-          if (confirmText !== 'RESET-TO-STAGE-1') {
-            $('reset-err').textContent = '❌ Type RESET-TO-STAGE-1 in the box first.';
-            $('reset-err').style.color = '#f66';
-            return;
-          }
-          if (!confirm('Reset ALL players to Stage 1? Backups will be saved first. This cannot be undone except via individual restore.')) return;
-          try {
-            const { ok, j } = await api('/api/gm/reset-all-stages', { method: 'POST', body: JSON.stringify({ confirm: confirmText }) });
-            if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-            $('reset-err').textContent = `✅ Backed up ${j.backedUp}, reset ${j.reset} players to Stage 1.`;
-            $('reset-err').style.color = '#4f4';
-            logAudit(`Stage reset: ${j.reset} players`);
-          } catch (e) {
-            $('reset-err').textContent = '❌ ' + e.message;
-            $('reset-err').style.color = '#f66';
-          }
-        });
-      }
-      const restoreBtn = $('restore-btn');
-      if (restoreBtn && !restoreBtn.dataset.wired) {
-        restoreBtn.dataset.wired = '1';
-        restoreBtn.addEventListener('click', async () => {
-          const u = (($('restore-user') || {}).value || '').trim();
-          if (!u) {
-            $('restore-err').textContent = '❌ Enter a username.';
-            $('restore-err').style.color = '#f66';
-            return;
-          }
-          if (!confirm(`Restore ${u}'s pre-reset progress?`)) return;
-          try {
-            const { ok, j } = await api('/api/gm/restore-player', { method: 'POST', body: JSON.stringify({ username: u }) });
-            if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-            $('restore-err').textContent = `✅ Restored ${u}'s progress${j.live ? ' (live!)' : ''}.`;
-            $('restore-err').style.color = '#4f4';
-            logAudit(`Restore player → ${u}`);
-          } catch (e) {
-            $('restore-err').textContent = '❌ ' + e.message;
-            $('restore-err').style.color = '#f66';
-          }
-        });
-      }
-    })();
-  }
-  // Live progression overrides
-  function initProgression() {
-    const btn = $('prog-apply');
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.addEventListener('click', async () => {
-      const err = $('prog-err');
-      err.textContent = '';
-      const username = ($('prog-user') || {}).value.trim();
-      if (!username) { err.textContent = '❌ Enter a target username.'; return; }
-      const level = ($('prog-level') || {}).value.trim();
-      const xp = ($('prog-xp') || {}).value.trim();
-      const stage = ($('prog-stage') || {}).value.trim();
-      const tower = ($('prog-tower') || {}).value.trim();
-      if (!level && !xp && !stage && !tower) { err.textContent = '⚠️ Enter at least one value.'; return; }
-      const ops = [];
-      try {
-        if (level) {
-          const { ok, j } = await api('/api/gm/set-level', { method: 'POST', body: JSON.stringify({ username, level: parseInt(level) }) });
-          if (!ok || !j.ok) throw new Error('Level: ' + ((j && j.error) || 'failed'));
-          ops.push('Lv ' + level);
-        }
-        if (xp) {
-          const { ok, j } = await api('/api/gm/set-xp', { method: 'POST', body: JSON.stringify({ username, amount: parseInt(xp) }) });
-          if (!ok || !j.ok) throw new Error('XP: ' + ((j && j.error) || 'failed'));
-          ops.push('+' + xp + ' XP');
-        }
-        if (stage) {
-          const { ok, j } = await api('/api/gm/set-stage', { method: 'POST', body: JSON.stringify({ username, stage: parseInt(stage) }) });
-          if (!ok || !j.ok) throw new Error('Stage: ' + ((j && j.error) || 'failed'));
-          ops.push('Stage ' + stage);
-        }
-        if (tower) {
-          const { ok, j } = await api('/api/gm/set-tower', { method: 'POST', body: JSON.stringify({ username, floor: parseInt(tower) }) });
-          if (!ok || !j.ok) throw new Error('Tower: ' + ((j && j.error) || 'failed'));
-          ops.push('Tower ' + tower);
-        }
-        err.style.color = '#4f4';
-        err.textContent = `✅ Applied to ${username}: ${ops.join(' · ')}`;
-        logAudit(`Progression: ${ops.join(', ')} → ${username}`);
-        loadRoster();
-      } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-    });
-  }
-  // Custom gear factory
-  function initGearFactory() {
-    const btn = $('gear-forge');
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.addEventListener('click', async () => {
-      const err = $('gear-err');
-      err.textContent = '';
-      const username = ($('gear-user') || {}).value.trim();
-      const slot = ($('gear-slot') || {}).value;
-      const name = ($('gear-name') || {}).value.trim();
-      const atk = parseInt(($('gear-atk') || {}).value) || 0;
-      const def = parseInt(($('gear-def') || {}).value) || 0;
-      if (!username) { err.textContent = '❌ Enter a target username.'; return; }
-      if (!name) { err.textContent = '❌ Enter a custom item name.'; return; }
-      try {
-        const { ok, j } = await api('/api/gm/create-op-gear', {
-          method: 'POST',
-          body: JSON.stringify({ username, name, slot, rarity: 'mythic', stats: { atk, def } }),
-        });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        err.style.color = '#4f4';
-        err.textContent = `✅ Forged "${name}" → ${username}`;
-        logAudit(`Custom gear: "${name}" (${slot}) → ${username}`);
-      } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-    });
-  }
-  // Player snapshots for inspector
-  // Audit log helper (local console logging)
-  function logAudit(msg) {
-    try { console.log('[owner]', new Date().toLocaleTimeString(), msg); } catch {}
-  }
-  // Economy multipliers
-  function initMultipliers() {
-    const pairs = [['xp'], ['gold'], ['drop']];
-    pairs.forEach(([name]) => {
-      const slider = $('mult-' + name + '-slider');
-      const num = $('mult-' + name);
-      if (slider && num) {
-        slider.addEventListener('input', () => { num.value = slider.value; });
-        num.addEventListener('input', () => { slider.value = num.value; });
-      }
-    });
-    // Load current values
-    api('/api/settings').then(({ ok, j }) => {
-      if (!ok || !j) return;
-      try {
-        const buff = j.event_buff ? JSON.parse(j.event_buff) : null;
-        if (buff) {
-          if ($('mult-xp')) { $('mult-xp').value = buff.xpMult || 1; $('mult-xp-slider').value = buff.xpMult || 1; }
-          if ($('mult-gold')) { $('mult-gold').value = buff.goldMult || 1; $('mult-gold-slider').value = buff.goldMult || 1; }
-          if (buff.dropMult && $('mult-drop')) { $('mult-drop').value = buff.dropMult; $('mult-drop-slider').value = buff.dropMult; }
-        }
-      } catch {}
-    });
-    const applyBtn = $('mult-apply');
-    if (applyBtn && !applyBtn.dataset.wired) {
-      applyBtn.dataset.wired = '1';
-      applyBtn.addEventListener('click', async () => {
-        const err = $('mult-err');
-        err.textContent = '';
-        const xpMult = parseFloat($('mult-xp').value) || 1;
-        const goldMult = parseFloat($('mult-gold').value) || 1;
-        const dropMult = parseFloat($('mult-drop').value) || 1;
-        const hours = parseInt($('mult-hours').value) || 0;
-        try {
-          const { ok, j } = await api('/api/gm/event-buff', {
-            method: 'POST',
-            body: JSON.stringify({ xpMult, goldMult, dropMult, hours, label: 'Owner Dashboard' }),
-          });
-          if (!ok || !j.ok) throw new Error((j && j.error) || 'Failed');
-          err.style.color = '#4f4';
-          err.textContent = hours === 0 ? '✅ Multipliers cleared.' : `✅ Set to ${xpMult}x XP / ${goldMult}x Gold / ${dropMult}x Drop for ${hours}h.`;
-          logAudit(`Multipliers adjusted: ${xpMult}x XP, ${goldMult}x Gold, ${dropMult}x Drop`);
-        } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-      });
+  // Helper for error display
+  function setErr(id, msg, isOk) {
+    const el = $(id);
+    if (el) {
+      el.textContent = msg;
+      el.style.color = isOk ? '#4f4' : '#f66';
     }
   }
-  async function loadRoster() {
-    const box = $('owner-roster');
-    try {
-      const { ok, j } = await api('/api/gm/roster-live');
-      if (!ok || !j.ok) throw 0;
-      const fmtGold = (g) => g >= 1e33 ? (g/1e33).toFixed(1)+'Dc' : g >= 1e12 ? (g/1e12).toFixed(1)+'T' : g >= 1e9 ? (g/1e9).toFixed(1)+'B' : g >= 1e6 ? (g/1e6).toFixed(1)+'M' : g >= 1e3 ? (g/1e3).toFixed(1)+'K' : String(g);
-      const fmtTime = (s) => { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h > 0 ? h+'h '+m+'m' : m+'m'; };
-      box.innerHTML = j.players.map(p =>
-        `<div class="roster-row"><span class="${p.online ? 'online' : 'offline'}">${p.online ? '🟢' : '🔴'}</span>` +
-        `<span class="nm">${esc(p.username)}</span>` +
-        `<span class="meta">Lv ${p.level} · Stg ${p.stage} · 🗼${p.towerFloor} · 💰${fmtGold(p.gold)}</span>` +
-        `<span class="meta">⏱️${fmtTime(p.playTime)} · 👑${p.bosses}</span>` +
-        `<span class="meta">${p.online ? 'now' : new Date(p.lastSeen).toLocaleString()}</span>` +
-        `<select data-role-for="${esc(p.username)}" data-uid="${p.id}" style="background:#111;color:#fff;border:1px solid #555;border-radius:4px;padding:2px 4px;font-size:11px">` +
-        ['player','tester','moderator','admin','gm'].map(r => `<option value="${r}" ${p.role === r ? 'selected' : ''}>${r}</option>`).join('') +
-        `</select></div>`).join('') || '<p style="color:#888">No players.</p>';
-      // Wire role change handlers
-      box.querySelectorAll('select[data-uid]').forEach(sel => {
-        sel.addEventListener('change', async (e) => {
-          e.stopPropagation();
-          const username = sel.dataset.roleFor;
-          const role = sel.value;
-          if (!confirm(`Set ${username}'s role to ${role}?`)) { loadRoster(); return; }
-          try {
-            const { ok, j } = await api('/api/roles', { method: 'POST', body: JSON.stringify({ username, role }) });
-            if (!ok || !j.ok) throw new Error(j.error || 'Failed');
-            alert('Role updated!');
-          } catch (e) { alert('Error: ' + e.message); loadRoster(); }
-        });
-        // Don't open modal when clicking the dropdown
-        sel.addEventListener('click', (e) => e.stopPropagation());
-      });
-      // Wire roster row clicks to open tactical modal
-      box.querySelectorAll('.roster-row').forEach(row => {
-        row.addEventListener('click', () => {
-          const sel = row.querySelector('select[data-role-for]');
-          const username = sel ? sel.dataset.roleFor : null;
-          if (username) openPlayerModal(username);
-        });
-      });
-    } catch { box.innerHTML = '<p style="color:#f66">Failed to load.</p>'; }
-  }
-  // Tactical player edit modal
-  let modalPlayer = '';
-  function openPlayerModal(username) {
-    modalPlayer = username;
-    $('modal-player-name').textContent = 'Target: ' + username;
-    $('modal-gold').value = ''; $('modal-level').value = '';
-    $('modal-stage').value = ''; $('modal-rebirth').value = '';
-    $('modal-err').textContent = '';
-    $('player-edit-modal').classList.add('open');
-  }
-  function closePlayerModal() {
-    $('player-edit-modal').classList.remove('open');
-    modalPlayer = '';
-  }
-  function initRoleSetter() {
-    const btn = $('role-set-btn');
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.addEventListener('click', async () => {
-      const err = $('role-err');
-      const username = $('role-user').value.trim();
-      const role = $('role-select').value;
-      err.style.color = ''; err.textContent = '';
-      if (!username) { err.style.color = '#f66'; err.textContent = 'Enter a username.'; return; }
-      if (!confirm(`Set ${username}'s role to ${role}?`)) return;
-      try {
-        const { ok, j } = await api('/api/roles', { method: 'POST', body: JSON.stringify({ username, role }) });
-        if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-        err.style.color = '#4f4'; err.textContent = `✅ ${username} is now ${role}.`;
-        logAudit(`Role set: ${username} → ${role}`);
-        loadRoster();
-      } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-    });
-  }
-  function initPlayerModal() {
-    const closeBtn = $('modal-close');
-    if (closeBtn && !closeBtn.dataset.wired) {
-      closeBtn.dataset.wired = '1';
-      closeBtn.addEventListener('click', closePlayerModal);
-    }
-    // Close on backdrop click
-    const modal = $('player-edit-modal');
-    if (modal && !modal.dataset.wired) {
-      modal.dataset.wired = '1';
-      modal.addEventListener('click', (e) => { if (e.target === modal) closePlayerModal(); });
-    }
-    // Close on Escape
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePlayerModal(); });
-    // Apply modifications
-    const applyBtn = $('modal-apply');
-    if (applyBtn && !applyBtn.dataset.wired) {
-      applyBtn.dataset.wired = '1';
-      applyBtn.addEventListener('click', async () => {
-        const err = $('modal-err');
-        err.textContent = '';
-        if (!modalPlayer) { err.textContent = '❌ No player selected.'; return; }
-        const ops = [];
-        const gold = $('modal-gold').value.trim();
-        const level = $('modal-level').value.trim();
-        const stage = $('modal-stage').value.trim();
-        const rebirth = $('modal-rebirth').value.trim();
-        try {
-          if (gold) {
-            const { ok, j } = await api('/api/gm/set-gold', { method: 'POST', body: JSON.stringify({ username: modalPlayer, gold: parseInt(gold) }) });
-            if (!ok || !j.ok) throw new Error('Gold: ' + ((j && j.error) || 'failed'));
-            ops.push('gold');
-          }
-          if (level) {
-            const { ok, j } = await api('/api/gm/set-level', { method: 'POST', body: JSON.stringify({ username: modalPlayer, level: parseInt(level) }) });
-            if (!ok || !j.ok) throw new Error('Level: ' + ((j && j.error) || 'failed'));
-            ops.push('level');
-          }
-          if (stage) {
-            const { ok, j } = await api('/api/gm/set-stage', { method: 'POST', body: JSON.stringify({ username: modalPlayer, stage: parseInt(stage) }) });
-            if (!ok || !j.ok) throw new Error('Stage: ' + ((j && j.error) || 'failed'));
-            ops.push('stage');
-          }
-          if (rebirth) {
-            const { ok, j } = await api('/api/gm/set-rebirth', { method: 'POST', body: JSON.stringify({ username: modalPlayer, count: parseInt(rebirth) }) });
-            if (!ok || !j.ok) throw new Error('Rebirth: ' + ((j && j.error) || 'failed'));
-            ops.push('rebirth');
-          }
-          err.style.color = '#4f4';
-          err.textContent = ops.length ? `✅ Applied: ${ops.join(', ')}` : '⚠️ No values entered.';
-          logAudit(`Player edit: ${ops.join(', ') || 'no-op'} → ${modalPlayer}`);
-          loadRoster();
-        } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-      });
-    }
-    // Quick actions
-    const quickBuff = $('modal-buff-btn');
-    if (quickBuff && !quickBuff.dataset.wired) {
-      quickBuff.dataset.wired = '1';
-      quickBuff.addEventListener('click', async () => {
-        if (!modalPlayer) return;
-        const err = $('modal-err');
-        try {
-          const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: modalPlayer, buffType: 'damage', value: 50, duration: 300 }) });
-          if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-          err.style.color = '#4f4'; err.textContent = '✅ +50% damage buff (5min) injected.';
-          logAudit(`Buff injected → ${modalPlayer}`);
-        } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-      });
-    }
-    const quickGear = $('modal-gear-btn');
-    if (quickGear && !quickGear.dataset.wired) {
-      quickGear.dataset.wired = '1';
-      quickGear.addEventListener('click', async () => {
-        if (!modalPlayer) return;
-        const err = $('modal-err');
-        try {
-          const { ok, j } = await api('/api/gm/give-gear-set', { method: 'POST', body: JSON.stringify({ username: modalPlayer, setId: 'sovereign' }) });
-          if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-          err.style.color = '#4f4'; err.textContent = '✅ Sovereign gear set granted.';
-          logAudit(`Gear granted → ${modalPlayer}`);
-        } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-      });
-    }
-    const quickHeal = $('modal-heal-btn');
-    if (quickHeal && !quickHeal.dataset.wired) {
-      quickHeal.dataset.wired = '1';
-      quickHeal.addEventListener('click', async () => {
-        if (!modalPlayer) return;
-        const err = $('modal-err');
-        try {
-          const { ok, j } = await api('/api/gm/heal', { method: 'POST', body: JSON.stringify({ username: modalPlayer }) });
-          if (!ok || !j.ok) throw new Error((j && j.error) || 'failed');
-          err.style.color = '#4f4'; err.textContent = '✅ Health fully restored.';
-          logAudit(`Heal → ${modalPlayer}`);
-        } catch (e) { err.style.color = '#f66'; err.textContent = '❌ ' + e.message; }
-      });
-    }
-  }
-  async function checkMaint() {
-    try {
-      const { ok, j } = await api('/api/status');
-      const on = ok && j.maintenance;
-      const st = $('maint-status');
-      st.textContent = on ? '🔴 MAINTENANCE MODE' : '🟢 ONLINE';
-      st.className = 'maint-status ' + (on ? 'on' : 'off');
-    } catch {}
-  }
-  $('maint-on').addEventListener('click', async () => {
-    const msg = $('maint-msg').value.trim() || 'Down for maintenance';
-    if (!confirm('Take the game DOWN?')) return;
-    await api('/api/gm/maintenance', { method: 'POST', body: JSON.stringify({ on: true, message: msg }) });
-    checkMaint();
+  const getUser = (id) => (($(id) || {}).value || '').trim();
+
+  // Player Search & Inspect
+  bind('btn-search-player', async () => {
+    const u = getUser('player-search-input');
+    if (!u) { setErr('search-err', '❌ Enter a username.'); return; }
+    setErr('search-err', 'Searching...');
+    const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
+    if (!ok) { setErr('search-err', '❌ ' + ((j && j.error) || 'Not found')); return; }
+    const d = j.data || j;
+    $('search-result-card').classList.remove('hidden');
+    $('target-name').textContent = d.username || u;
+    $('target-level').textContent = 'Lv ' + (d.level || 1) + ' / ' + (d.xp || 0) + ' XP';
+    $('target-rebirths').textContent = d.rebirthCount || 0;
+    $('target-gold').textContent = d.gold || 0;
+    $('target-stage').textContent = d.stage || 1;
+    // Also fill the powers username
+    if ($('pow-user')) $('pow-user').value = d.username || u;
+    if ($('forge-user')) $('forge-user').value = d.username || u;
+    setErr('search-err', '✅ Found ' + (d.username || u), true);
   });
-  $('maint-off').addEventListener('click', async () => {
-    if (!confirm('Bring the game back UP?')) return;
-    await api('/api/gm/maintenance', { method: 'POST', body: JSON.stringify({ on: false }) });
-    checkMaint();
+
+  // Powers: Give Gold
+  bind('pow-gold-btn', async () => {
+    const u = getUser('pow-user');
+    const amt = parseInt(($('pow-gold') || {}).value) || 0;
+    if (!u || !amt) { setErr('powers-err', '❌ Enter username and amount.'); return; }
+    const { ok, j } = await api('/api/gm/set-gold', { method: 'POST', body: JSON.stringify({ username: u, amount: amt }) });
+    setErr('powers-err', ok ? `✅ Gave ${amt} gold to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
-  // Powers
+
+  // Powers: Set Level & XP
+  bind('pow-level-btn', async () => {
+    const u = getUser('pow-user');
+    const lvl = Math.floor(Number(($('pow-level') || {}).value));
+    const xp = Math.floor(Number(($('pow-xp') || {}).value)) || 0;
+    if (!u || !lvl) { setErr('powers-err', '❌ Enter username and level.'); return; }
+    const { ok, j } = await api('/api/gm/set-level', { method: 'POST', body: JSON.stringify({ username: u, level: lvl }) });
+    if (ok && xp > 0) {
+      await api('/api/gm/set-xp', { method: 'POST', body: JSON.stringify({ username: u, xp }) });
+    }
+    setErr('powers-err', ok ? `✅ Set ${u} to level ${lvl}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Powers: Set Rebirth
+  bind('pow-rebirth-btn', async () => {
+    const u = getUser('pow-user');
+    const rb = Math.floor(Number(($('pow-rebirth') || {}).value));
+    if (!u || isNaN(rb)) { setErr('powers-err', '❌ Enter username and rebirth count.'); return; }
+    const { ok, j } = await api('/api/gm/set-rebirth', { method: 'POST', body: JSON.stringify({ username: u, rebirths: rb }) });
+    setErr('powers-err', ok ? `✅ Set ${u} rebirths to ${rb}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Powers: Set Stage
+  bind('pow-stage-btn', async () => {
+    const u = getUser('pow-user');
+    const st = Math.floor(Number(($('pow-stage') || {}).value));
+    if (!u || !st) { setErr('powers-err', '❌ Enter username and stage.'); return; }
+    const { ok, j } = await api('/api/gm/set-stage', { method: 'POST', body: JSON.stringify({ username: u, stage: st }) });
+    setErr('powers-err', ok ? `✅ Set ${u} to stage ${st}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Powers: Heal
+  bind('pow-heal-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    const { ok, j } = await api('/api/gm/heal', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('powers-err', ok ? `✅ Healed ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Powers: Grant Buff
+  bind('pow-buff-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffId: 'god-buff', durationHr: 1 }) });
+    setErr('powers-err', ok ? `✅ Granted god-buff to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Powers: Clear Inventory
+  bind('pow-clear-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    if (!confirm(`Clear ${u}'s inventory?`)) return;
+    const { ok, j } = await api('/api/gm/clear-bags', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('powers-err', ok ? `✅ Cleared ${u}'s inventory` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Stage Reset
+  bind('reset-stages-btn', async () => {
+    const confirmText = (($('reset-confirm') || {}).value || '').trim();
+    if (confirmText !== 'RESET-TO-STAGE-1') {
+      setErr('reset-err', '❌ Type RESET-TO-STAGE-1 in the box first.');
+      return;
+    }
+    if (!confirm('Reset ALL players to Stage 1? This will backup first.')) return;
+    setErr('reset-err', 'Working...');
+    try {
+      const { ok, j } = await api('/api/gm/reset-all-stages', { method: 'POST', body: JSON.stringify({ confirm: 'RESET-TO-STAGE-1' }) });
+      setErr('reset-err', ok ? `✅ Backed up ${j.backedUp}, reset ${j.reset} players to Stage 1.` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    } catch (e) {
+      setErr('reset-err', '❌ ' + e.message);
+    }
+  });
+
+  // Restore Player
+  bind('restore-btn', async () => {
+    const u = getUser('restore-user');
+    if (!u) { setErr('restore-err', '❌ Enter a username.'); return; }
+    setErr('restore-err', 'Restoring...');
+    try {
+      const { ok, j } = await api('/api/gm/restore-player', { method: 'POST', body: JSON.stringify({ username: u }) });
+      setErr('restore-err', ok ? `✅ Restored ${u}'s progress${j.live ? ' (live!)' : ''}.` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    } catch (e) {
+      setErr('restore-err', '❌ ' + e.message);
+    }
+  });
+
+  // Forge OP Gear
+  bind('forge-btn', async () => {
+    const u = getUser('forge-user');
+    const name = (($('forge-name') || {}).value || '').trim();
+    const slot = ($('forge-slot') || {}).value || 'weapon';
+    const rarity = ($('forge-rarity') || {}).value || 'rainbowstar';
+    const atk = parseFloat(($('forge-atk') || {}).value) || 0;
+    const def = parseFloat(($('forge-def') || {}).value) || 0;
+    const crit = parseFloat(($('forge-crit') || {}).value) || 0;
+    if (!u || !name) { setErr('forge-err', '❌ Enter username and item name.'); return; }
+    setErr('forge-err', 'Forging...');
+    const { ok, j } = await api('/api/gm/create-op-gear', {
+      method: 'POST',
+      body: JSON.stringify({ username: u, name, slot, rarity, stats: { attack: atk, defense: def, critChance: crit } })
+    });
+    setErr('forge-err', ok ? `✅ Forged ${name} for ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
+  // Broadcast
+  bind('broadcast-btn', async () => {
+    const msg = (($('broadcast-msg') || {}).value || '').trim();
+    if (!msg) { setErr('broadcast-err', '❌ Enter a message.'); return; }
+    const { ok, j } = await api('/api/gm/broadcast', { method: 'POST', body: JSON.stringify({ message: msg }) });
+    setErr('broadcast-err', ok ? '✅ Broadcast sent!' : '❌ ' + ((j && j.error) || 'failed'), ok);
+    if (ok) $('broadcast-msg').value = '';
+  });
+
+  // 2x Event Toggle
   bind('pow-2x-btn', async () => {
-    if (!confirm('Toggle 2x XP & Gold server-wide for 24 hours?')) return;
-    const { ok, j } = await api('/api/gm/event-buff', { method: 'POST', body: JSON.stringify({ xpMult: 2, goldMult: 2, dropMult: 1, hours: 24, label: '2x Event' }) });
-    $('powers-err').textContent = ok ? '✅ 2x Event activated (24h)!' : '❌ ' + ((j && j.error) || 'failed');
-    if (ok) logAudit('2x Event activated');
+    const { ok, j } = await api('/api/gm/event-buff', { method: 'POST', body: JSON.stringify({ type: 'xp_gold', hours: 24 }) });
+    setErr('patch-err', ok ? '✅ 2x event toggled (24h)' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
+
+  // Push Patch Notes
   bind('pow-patch-btn', async () => {
     const { ok, j } = await api('/api/gm/push-patch-notes', { method: 'POST', body: JSON.stringify({}) });
-    $('powers-err').textContent = ok ? '✅ Patch notes pushed to Discord!' : '❌ ' + ((j && j.error) || 'failed');
+    setErr('patch-err', ok ? '✅ Patch notes pushed!' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
+
+  // Check Buffs
   bind('buff-check-btn', async () => {
-    const u = $('buff-check-user').value.trim();
-    const list = $('buff-list');
-    if (!u) { list.innerHTML = '<span style="color:#f66">Enter a username.</span>'; return; }
-    list.innerHTML = '<span style="color:#888">Loading…</span>';
+    const u = getUser('buff-check-user');
+    if (!u) { setErr('patch-err', '❌ Enter username.'); return; }
     const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
-    if (!ok || !j.ok) { list.innerHTML = '<span style="color:#f66">❌ ' + ((j && j.error) || 'failed') + '</span>'; return; }
-    const buffs = (j.dossier && j.dossier.buffs) || [];
-    list.innerHTML = buffs.length ? buffs.map(b => `<div>✨ ${esc(b.type || b.buffType)} +${b.value}% (${Math.round((b.expiresAt - Date.now()) / 60000)}m left)</div>`).join('') : '<span style="color:#888">No active buffs.</span>';
+    if (!ok) { setErr('patch-err', '❌ ' + ((j && j.error) || 'failed')); return; }
+    const buffs = (j.data && j.data.buffs) || j.buffs || [];
+    setErr('patch-err', `✅ ${u} has ${buffs.length} active buffs: ${buffs.map(b => b.id || b).join(', ') || 'none'}`, true);
   });
-  $('pow-broadcast-btn').addEventListener('click', async () => {
-    const msg = $('pow-broadcast').value.trim();
-    if (!msg) return;
-    const { ok, j } = await api('/api/gm/broadcast', { method: 'POST', body: JSON.stringify({ message: msg }) });
-    $('powers-err').textContent = ok ? '✅ Sent!' : '❌ ' + ((j && j.error) || 'failed');
-    if (ok) $('pow-broadcast').value = '';
+
+  // Event toggles (Realm tab)
+  bind('event-gold-btn', async () => {
+    const { ok, j } = await api('/api/gm/event-buff', { method: 'POST', body: JSON.stringify({ type: 'gold', hours: 24 }) });
+    setErr('event-err', ok ? '✅ Gold event toggled' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
-  $('pow-gold-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim(), amt = Math.floor(Number($('pow-gold').value));
-    if (!u || !amt) { $('powers-err').textContent = 'Enter username and amount.'; return; }
-    const { ok, j } = await api('/api/gm/set-gold', { method: 'POST', body: JSON.stringify({ username: u, amount: amt }) });
-    $('powers-err').textContent = ok ? `✅ Gave ${amt} gold to ${u}` : '❌ ' + ((j && j.error) || 'failed');
+  bind('event-xp-btn', async () => {
+    const { ok, j } = await api('/api/gm/event-buff', { method: 'POST', body: JSON.stringify({ type: 'xp', hours: 24 }) });
+    setErr('event-err', ok ? '✅ XP event toggled' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
-  $('pow-level-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim(), lvl = Math.floor(Number($('pow-level').value));
-    if (!u || !lvl) { $('powers-err').textContent = 'Enter username and level.'; return; }
-    const { ok, j } = await api('/api/gm/set-level', { method: 'POST', body: JSON.stringify({ username: u, level: lvl }) });
-    $('powers-err').textContent = ok ? `✅ Set ${u} to level ${lvl}` : '❌ ' + ((j && j.error) || 'failed');
+
+  // Backup
+  bind('backup-btn', async () => {
+    setErr('backup-err', 'Backing up...');
+    const { ok, j } = await api('/api/gm/reset-all-stages', { method: 'POST', body: JSON.stringify({ confirm: 'BACKUP-ONLY' }) });
+    setErr('backup-err', ok ? '✅ Backup complete' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
-  $('pow-xp-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim(), xp = Math.floor(Number($('pow-xp').value));
-    if (!u || !xp) { $('powers-err').textContent = 'Enter username and XP.'; return; }
-    const { ok, j } = await api('/api/gm/set-xp', { method: 'POST', body: JSON.stringify({ username: u, amount: xp }) });
-    $('powers-err').textContent = ok ? `✅ Gave ${xp} XP to ${u}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  $('pow-stage-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim(), stage = Math.floor(Number($('pow-stage').value));
-    if (!u || !stage) { $('powers-err').textContent = 'Enter username and stage.'; return; }
-    const { ok, j } = await api('/api/gm/set-stage', { method: 'POST', body: JSON.stringify({ username: u, stage }) });
-    $('powers-err').textContent = ok ? `✅ Set ${u} to stage ${stage}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  $('pow-tower-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim(), floor = Math.floor(Number($('pow-tower').value));
-    if (!u || !floor) { $('powers-err').textContent = 'Enter username and floor.'; return; }
-    const { ok, j } = await api('/api/gm/set-tower', { method: 'POST', body: JSON.stringify({ username: u, floor }) });
-    $('powers-err').textContent = ok ? `✅ Set ${u} to tower floor ${floor}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  $('pow-clear-btn').addEventListener('click', async () => {
-    const u = $('pow-user').value.trim();
-    if (!u) { $('powers-err').textContent = 'Enter username.'; return; }
-    if (!confirm(`Clear ${u}'s bags? (Keeps equipped + unsellable)`)) return;
-    const { ok, j } = await api('/api/gm/clear-bags', { method: 'POST', body: JSON.stringify({ username: u }) });
-    $('powers-err').textContent = ok ? `✅ Cleared ${j.cleared} items from ${u}'s bags` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  $('pow-gear-btn').addEventListener('click', async () => {
-    const u = $('pow-gear-user').value.trim(), setId = $('pow-gear-set').value;
-    if (!u) { $('powers-err').textContent = 'Enter username.'; return; }
-    const { ok, j } = await api('/api/gm/give-gear-set', { method: 'POST', body: JSON.stringify({ username: u, setId }) });
-    $('powers-err').textContent = ok ? `✅ Gave ${setId} set (${j.granted.length} pieces) to ${u}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  $('pow-buff-btn').addEventListener('click', async () => {
-    const u = $('pow-buff-user').value.trim(), buffType = $('pow-buff-type').value;
-    const value = Number($('pow-buff-val').value) || 0, duration = Number($('pow-buff-dur').value) || 30;
-    if (!u) { $('powers-err').textContent = 'Enter username.'; return; }
-    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType, value, duration }) });
-    $('powers-err').textContent = ok ? `✅ ${j.buff.name} → ${u}${j.live ? ' [LIVE!]' : ' (offline, applies on login)'}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  // Buffs tab (dedicated)
-  $('buff-grant-btn').addEventListener('click', async () => {
-    const u = $('buff-user').value.trim(), buffType = $('buff-type').value;
-    const value = Number($('buff-val').value) || 0, duration = Number($('buff-dur').value) || 30;
-    if (!u) { $('buffs-err').textContent = 'Enter username.'; return; }
-    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType, value, duration }) });
-    $('buffs-err').textContent = ok ? `✅ ${j.buff.name} → ${u}${j.live ? ' [LIVE!]' : ' (offline, applies on login)'}` : '❌ ' + ((j && j.error) || 'failed');
-  });
-  // OP gear
-  $('op-forge').addEventListener('click', async () => {
-    $('op-err').textContent = '';
-    const username = $('op-user').value.trim(), name = $('op-name').value.trim();
-    const stats = {};
-    [['op-atk','attack'],['op-hp','maxHp'],['op-def','defense'],['op-crit','critChance'],['op-ls','lifesteal'],['op-spd','attackSpeed']].forEach(([id,k]) => {
-      const v = Number($(id).value); if (Number.isFinite(v) && v !== 0) stats[k] = v;
-    });
-    if (!username || !name) { $('op-err').textContent = 'Enter username and item name.'; return; }
-    if (!Object.keys(stats).length) { $('op-err').textContent = 'Enter at least one stat.'; return; }
-    const { ok, j } = await api('/api/gm/create-op-gear', { method: 'POST', body: JSON.stringify({ username, name, slot: $('op-slot').value, rarity: $('op-rarity').value, stats }) });
-    $('op-err').textContent = ok ? `✅ Forged "${name}" for ${username}!` : '❌ ' + ((j && j.error) || 'failed');
-    $('op-err').style.color = ok ? '#4f4' : '#f66';
-  });
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 })();
