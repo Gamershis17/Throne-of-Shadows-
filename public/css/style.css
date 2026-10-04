@@ -6449,3 +6449,328 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
   animation: rainbowShift 3s linear infinite;
   font-weight: bold;
 }
+
+/* ==========================================================================
+   GLASSMORPHIC PLAYER INSPECT MODAL (Vanilla CSS)
+   ========================================================================== */
+
+/* Modal Backdrop Overlay */
+#inspect-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+#inspect-modal.hidden {
+  display: none !important;
+}
+
+/* Modal Window Container */
+.inspect-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  background: rgba(18, 18, 26, 0.92);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), 0 0 15px rgba(234, 179, 8, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #f3f4f6;
+  font-family: inherit;
+}
+
+/* Modal Header */
+.inspect-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+  background: rgba(26, 26, 38, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspect-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inspect-avatar-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.inspect-user-name {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.inspect-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9ca3af;
+  display: inline-block;
+}
+
+.inspect-status-dot.online {
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.inspect-user-sub {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.75rem;
+  color: rgba(234, 179, 8, 0.8);
+  font-weight: 500;
+}
+
+.inspect-close-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  transition: color 0.2s;
+}
+
+.inspect-close-btn:hover {
+  color: #ffffff;
+}
+
+/* Modal Body Layout (Sidebar + Content Area) */
+.inspect-body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .inspect-body {
+    flex-direction: column;
+  }
+}
+
+/* Left Sidebar Navigation */
+.inspect-sidebar {
+  width: 200px;
+  background: rgba(10, 10, 15, 0.4);
+  border-right: 1px solid rgba(234, 179, 8, 0.15);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .inspect-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(234, 179, 8, 0.15);
+    flex-direction: row;
+  }
+}
+
+.inspect-tab-btn {
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.inspect-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.inspect-tab-btn.active {
+  background: rgba(234, 179, 8, 0.18);
+  color: #fde047;
+  border-color: rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.15);
+}
+
+/* Main Content Area */
+.inspect-content {
+  flex: 1;
+  padding: 1.25rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.inspect-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.inspect-tab-pane.hidden {
+  display: none !important;
+}
+
+/* Overview Cards */
+.inspect-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .inspect-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.inspect-card {
+  background: rgba(26, 26, 38, 0.5);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.inspect-card-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #9ca3af;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.inspect-card-value {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fde047;
+}
+
+/* Section Box */
+.inspect-section {
+  background: rgba(26, 26, 38, 0.4);
+  border: 1px solid rgba(234, 179, 8, 0.15);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.inspect-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(234, 179, 8, 0.9);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
+}
+
+/* Stat Rows */
+.inspect-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+
+.inspect-stat-row:last-child {
+  border-bottom: none;
+}
+
+.inspect-stat-label {
+  color: #9ca3af;
+}
+
+.inspect-stat-val {
+  color: #fde047;
+  font-weight: 700;
+}
+
+/* Gear Grid */
+.inspect-gear-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .inspect-gear-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inspect-gear-slot {
+  background: rgba(26, 26, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Rainbow Glow for High Tier Gear */
+@keyframes inspect-rainbow-glow {
+  0% { border-color: #ff0000; box-shadow: 0 0 10px rgba(255,0,0,0.3); }
+  20% { border-color: #ff8800; box-shadow: 0 0 10px rgba(255,136,0,0.3); }
+  40% { border-color: #ffff00; box-shadow: 0 0 10px rgba(255,255,0,0.3); }
+  60% { border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+  80% { border-color: #0099ff; box-shadow: 0 0 10px rgba(0,153,255,0.3); }
+  100% { border-color: #ff0000; box-shadow: 0 0 10px rgba(255,0,0,0.3); }
+}
+
+.inspect-gear-slot.rainbow-tier {
+  animation: inspect-rainbow-glow 4s linear infinite;
+}
+
+/* Custom Scrollbar */
+.inspect-content::-webkit-scrollbar {
+  width: 6px;
+}
+.inspect-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+.inspect-content::-webkit-scrollbar-thumb {
+  background: rgba(234, 179, 8, 0.25);
+  border-radius: 4px;
+}
+.inspect-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(234, 179, 8, 0.5);
+}
