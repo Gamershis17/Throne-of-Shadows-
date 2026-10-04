@@ -2003,14 +2003,21 @@ export function hasImmunity(state) {
 }
 // Apply shield absorption; returns remaining damage after shield
 export function absorbWithShield(state, dmg) {
-  const shield = getActiveBuff(state, 'shield');
-  if (!shield || shield.value <= 0) return dmg;
-  const absorbed = Math.min(shield.value, dmg);
-  shield.value -= absorbed;
-  if (shield.value <= 0) {
-    state.activeBuffs = (state.activeBuffs || []).filter(b => b.id !== shield.id);
+  const now = Date.now();
+  // Check all shield types: shield, priest_shield, pally_bubble
+  const shieldTypes = ['shield', 'priest_shield', 'pally_bubble'];
+  for (const stype of shieldTypes) {
+    const shield = (state.activeBuffs || []).find(b => b.type === stype && b.expiresAt > now);
+    if (!shield || shield.value <= 0) continue;
+    const absorbed = Math.min(shield.value, dmg);
+    shield.value -= absorbed;
+    dmg -= absorbed;
+    if (shield.value <= 0) {
+      state.activeBuffs = (state.activeBuffs || []).filter(b => b.id !== shield.id);
+    }
+    if (dmg <= 0) break;
   }
-  return dmg - absorbed;
+  return Math.max(0, dmg);
 }
 
 // ---------------- Loot ----------------
