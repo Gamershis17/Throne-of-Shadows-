@@ -895,6 +895,9 @@ export const UI = {
     for (const v of ['auth', 'race', 'class', 'pet', 'spec', 'app', 'gm', 'maintenance']) {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
     }
+    // GM console rainbow frame
+    const frame = document.getElementById('gm-rainbow-frame');
+    if (frame) frame.classList.toggle('active', name === 'gm');
     window.scrollTo(0, 0);
   },
 
