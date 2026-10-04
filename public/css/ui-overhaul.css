@@ -1620,14 +1620,3 @@ body {
   animation: eventPulse 4s ease-in-out infinite;
 }
 
-/* --- Mobile Talent Grid Fix --- */
-@media (max-width: 600px) {
-  .talent-node {
-    min-width: 90px !important;
-    max-width: 110px !important;
-    flex: 1 1 90px !important;
-  }
-  .talent-row {
-    gap: 6px !important;
-  }
-}
