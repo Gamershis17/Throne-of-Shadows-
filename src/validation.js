@@ -15,7 +15,7 @@ const NAME_FX_IDS = new Set([
   'none', 'fire', 'neon', 'rainbow', 'shine', 'galaxy',
   'ice', 'lightning', 'shadow', 'glitch', 'falling-leaves', 'harvest-ember', 'autumn-mist', 'snowfall', 'aurora', 'frostbite', 'tidal', 'sunscorched', 'wildfire', 'fireworks', 'champagne', 'midnight',
   'voidborn', 'goldleaf', 'bloodmoon', 'stormsurge', 'celestial', 'throneflame',
-  'gavelstrike', 'allseeing', 'worldforge', 'archlight', 'shadowcrown', 'everflame',
+  'gavelstrike', 'allseeing', 'worldforge', 'archlight', 'shadowcrown', 'everflame', 'rainbowblood',
 ]);
 
 // Server gold cap (owner-adjustable via server_settings). sanitizeStateBlob
