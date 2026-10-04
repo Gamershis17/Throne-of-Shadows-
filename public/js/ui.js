@@ -262,6 +262,47 @@ export const UI = {
     $$('#mode-switch .mode-btn').forEach(btn => {
       btn.addEventListener('click', () => this.handlers.onMode && this.handlers.onMode(btn.dataset.mode));
     });
+
+    // Swipe gestures for mobile tab navigation
+    (() => {
+      const tabOrder = ['battle', 'mine', 'gear', 'armory', 'tokenshop', 'pets', 'party', 'ranks', 'guild', 'quests', 'talents', 'stats', 'titles', 'settings'];
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      const swipeArea = document.getElementById('tab-content') || document.body;
+
+      swipeArea.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }, { passive: true });
+
+      swipeArea.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        const dt = Date.now() - touchStartTime;
+
+        // Must be quick (< 500ms) and primarily horizontal (> 80px, horizontal > vertical * 1.5)
+        if (dt > 500 || Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+        const current = this.activeTab;
+        const idx = tabOrder.indexOf(current);
+        if (idx === -1) return;
+
+        let nextIdx;
+        if (dx < 0) {
+          // Swipe left = next tab
+          nextIdx = (idx + 1) % tabOrder.length;
+        } else {
+          // Swipe right = previous tab
+          nextIdx = (idx - 1 + tabOrder.length) % tabOrder.length;
+        }
+        this.showTab(tabOrder[nextIdx]);
+      }, { passive: true });
+    })();
+
     listen('tap-btn', 'pointerdown', (e) => {
       e.preventDefault();
       this.handlers.onTap && this.handlers.onTap();
