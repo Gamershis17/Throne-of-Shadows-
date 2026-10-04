@@ -4337,6 +4337,20 @@ body:is(.perf, .os-reduced) .float-txt {
   68% { text-shadow: 0 0 10px rgba(240,240,255,.5); filter: brightness(.95); }
   86% { text-shadow: 0 0 18px rgba(255,255,255,.85), 0 0 40px rgba(200,200,240,.45); filter: brightness(1.3); }
 }
+/* Rainbow Blood: owner-only, blood & stars float up from rainbow text */
+.pname.fx-rainbowblood {
+  background-image: linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff00ff, #ff0000);
+  background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: pname-rainbowblood 3s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 100, 0.8)) drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
+  position: relative;
+}
+@keyframes pname-rainbowblood {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
 
 /* Perf / reduced-motion: freeze the motion, keep the color. */
 body:is(.perf, .os-reduced) .tl3-pulse,
