@@ -6597,6 +6597,13 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
     border-right: none;
     border-bottom: 1px solid rgba(234, 179, 8, 0.15);
     flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .inspect-sidebar .inspect-tab-btn {
+    flex-shrink: 0;
+    width: auto;
+    white-space: nowrap;
   }
 }
 
