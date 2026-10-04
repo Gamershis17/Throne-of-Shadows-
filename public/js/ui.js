@@ -3,7 +3,7 @@
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v20261003z';
+import * as Engine from './engine.js?v20261003bh';
 import { Audio } from './audio.js?v=20261003bg';
 import { api } from './api.js?v=20260930ar';
 
@@ -4887,7 +4887,7 @@ export const UI = {
       if (locked) return `<div class="pet-slot-frame is-locked"><span class="pet-slot-label">${label}</span><span class="muted small">\u{1F512} Hunter perk</span></div>`;
       if (!pet) return `<div class="pet-slot-frame is-empty"><span class="pet-slot-label">${label}</span><span class="muted small">Empty &mdash; tap a pet below</span></div>`;
       const sp = Engine.petSpeciesOf(pet) || {};
-      const bond = Engine.petBondFor(pet);
+      const bond = Engine.petBondFor(pet, state.level);
       const mult = Engine.petHungerMult(pet);
       const multLabel = mult === 1 ? '&times;1.0' : mult > 0 ? '&times;0.4 hungry' : 'sitting out';
       return `<div class="pet-slot-frame ${this.petRarityCls(sp.rarity)}" data-action="pet-focus" data-id="${esc(pet.uid)}" role="button" tabindex="0" title="Inspect ${esc(sp.name)}">
@@ -4947,7 +4947,7 @@ export const UI = {
       </div>`;
     }
     const ps = Engine.petStats(pet);
-    const pb = Engine.petBondFor(pet);
+    const pb = Engine.petBondFor(pet, state.level);
     const mult = Engine.petHungerMult(pet);
     const hungerLabel = mult === 1 ? 'full power &times;1.0' : mult > 0 ? 'peckish &mdash; 40% power &times;0.4' : 'hungry &mdash; sits out &times;0';
     const isHunter = state.playerClass === 'hunter';

@@ -3079,14 +3079,16 @@ export function petStats(pet) {
 // per-level species values × pet level, hunger-gated like strike damage.
 // Applied AFTER class/spec multiplicative bonuses in computeStats;
 // Hunter's +50% pet-damage bonus does NOT affect bond. Benched pets grant nothing.
-export function petBondFor(pet) {
+export function petBondFor(pet, levelCap) {
   const zero = { atk: 0, def: 0, hp: 0 };
   if (!pet) return zero;
   const sp = petSpeciesOf(pet);
   const b = (sp && sp.bond) || zero;
   const mult = petHungerMult(pet);
   if (!mult) return zero;
-  const lv = Math.max(1, pet.level);
+  // Cap effective pet level at player level so bond bonuses scale with progression
+  const cap = Number.isFinite(levelCap) && levelCap > 0 ? Math.floor(levelCap) : Infinity;
+  const lv = Math.max(1, Math.min(pet.level || 1, cap));
   // v23: bond is the better of the classic per-level values and 2% of the
   // pet's own stats. Early game is unchanged (linear wins); at high level
   // the bond tracks the pet instead of collapsing to a rounding error.
@@ -3102,11 +3104,12 @@ export function petBond(s) {
   const zero = { atk: 0, def: 0, hp: 0 };
   const out = { ...zero };
   const pets = activePets(s);
+  const playerLevel = Math.max(1, Math.floor(s.level || 1));
   // Pack Leader (Beast Mastery): second pet's bond bonuses are doubled.
   const cte = classTalentEffects(s);
   const secondMult = 1 + (cte.secondBondMult || 0);
   pets.forEach((pet, idx) => {
-    const b = petBondFor(pet);
+    const b = petBondFor(pet, playerLevel);
     const m = (idx === 1 && s.playerClass === 'hunter') ? secondMult : 1;
     out.atk += Math.round(b.atk * m); out.def += Math.round(b.def * m); out.hp += Math.round(b.hp * m);
   });
@@ -3157,15 +3160,27 @@ export function petXpForLevel(level) {
 export function gainPetXp(s, xp) {
   const gains = [];
   if (!Number.isFinite(xp) || xp <= 0) return { gains };
+  const playerLevel = Math.max(1, Math.floor(s.level || 1));
   for (const pet of activePets(s)) {
     pet.xp += xp;
     const levels = [];
     let guard = 0;
     while (pet.xp >= pet.xpNext && guard++ < 1000) {
       pet.xp -= pet.xpNext;
+      // Cap pet level at player level — pets can't exceed their owner's level
+      if (pet.level >= playerLevel) {
+        pet.xp = 0;
+        break;
+      }
       pet.level += 1;
       pet.xpNext = petXpForLevel(pet.level);
       levels.push(pet.level);
+    }
+    // Clamp any existing over-leveled pets (from before the cap)
+    if (pet.level > playerLevel) {
+      pet.level = playerLevel;
+      pet.xp = 0;
+      pet.xpNext = petXpForLevel(pet.level);
     }
     if (levels.length) gains.push({ name: (petSpeciesOf(pet) || {}).name || 'Pet', levels });
   }
