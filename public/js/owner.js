@@ -201,7 +201,7 @@
   // Push Patch Notes
   bind('pow-patch-btn', async () => {
     const { ok, j } = await api('/api/gm/push-patch-notes', { method: 'POST', body: JSON.stringify({}) });
-    setErr('patch-err', ok ? '✅ Patch notes pushed!' : '❌ ' + ((j && j.error) || 'failed'), ok);
+    setErr('broadcast-patch-err', ok ? '✅ Patch notes pushed!' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
 
   // Check Buffs
