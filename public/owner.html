@@ -239,6 +239,20 @@
           <button id="give-clear-btn" style="width:100%;margin-top:10px;padding:12px;background:#a00;color:#fff;border:2px solid #fff;border-radius:6px;font-weight:bold;cursor:pointer;font-family:inherit;font-size:14px">🎒 CLEAR BAGS</button>
           <div class="err" id="give-err"></div>
         </div>
+
+        <div class="card" style="border-color:#f80">
+          <h1 style="font-size:18px">🔄 STAGE RESET & RESTORE</h1>
+          <p class="sub">Stat-fix reset tools (use once)</p>
+          <button id="reset-stages-btn" style="width:100%;padding:12px;background:#a00;color:#fff;border:2px solid #f80;border-radius:6px;font-weight:bold;cursor:pointer;font-family:inherit;font-size:14px">⚠️ RESET ALL TO STAGE 1</button>
+          <p class="sub" style="margin-top:6px">Backs up everyone first. Type RESET-TO-STAGE-1 to confirm.</p>
+          <input id="reset-confirm" placeholder="Type confirmation" style="margin-bottom:8px">
+          <div class="err" id="reset-err"></div>
+          <hr style="border-color:#444;margin:12px 0">
+          <label>Restore Player Progress</label>
+          <input id="restore-user" placeholder="username" style="margin-bottom:8px">
+          <button id="restore-btn" style="width:100%;padding:10px;background:#080;color:#fff;border:2px solid #0f0;border-radius:6px;font-weight:bold;cursor:pointer;font-family:inherit">♻️ RESTORE FROM BACKUP</button>
+          <div class="err" id="restore-err"></div>
+        </div>
       </div>
 
       <!-- RIGHT COLUMN: Multipliers & Roster -->
@@ -457,6 +471,6 @@
   </div>
 </div>
 
-<script src="js/owner.js?v20261003d"></script>
+<script src="js/owner.js?v20261003bh"></script>
 </body>
 </html>
