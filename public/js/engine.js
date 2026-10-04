@@ -1061,6 +1061,48 @@ export function addBuff(s, kind, pct, sec) {
   const ex = s.buffs.find(b => b.kind === kind);
   if (ex) { ex.pct = pct; ex.until = until; } else s.buffs.push({ kind, pct, until });
 }
+// ---- Debuffs (damage over time, stuns, slows) ----
+// Stored in s.debuffs, tick each round, shown with red icons
+export const DEBUFF_DEFS = {
+  bleed: { name: 'Bleed', icon: '🩸', desc: 'Taking physical damage over time' },
+  poison: { name: 'Poisoned', icon: '☠️', desc: 'Taking nature damage over time' },
+  burn: { name: 'Burning', icon: '🔥', desc: 'Taking fire damage over time' },
+  stun: { name: 'Stunned', icon: '💫', desc: 'Cannot act' },
+  slow: { name: 'Slowed', icon: '🐌', desc: 'Attack speed reduced' },
+  weaken: { name: 'Weakened', icon: '📉', desc: 'Damage reduced' },
+};
+export function addDebuff(s, kind, value, sec) {
+  if (!s || !DEBUFF_DEFS[kind]) return;
+  if (!Array.isArray(s.debuffs)) s.debuffs = [];
+  const until = Date.now() + sec * 1000;
+  const ex = s.debuffs.find(d => d.kind === kind);
+  if (ex) { ex.value = value; ex.until = until; } else s.debuffs.push({ kind, value, until });
+}
+export function pruneDebuffs(s) {
+  if (!s || !Array.isArray(s.debuffs)) return;
+  const now = Date.now();
+  s.debuffs = s.debuffs.filter(d => d && d.until > now);
+}
+export function hasDebuff(s, kind) {
+  if (!s || !Array.isArray(s.debuffs)) return false;
+  return s.debuffs.some(d => d.kind === kind && d.until > Date.now());
+}
+export function tickDebuffs(s) {
+  // Returns total DoT damage to apply this tick
+  if (!s || !Array.isArray(s.debuffs)) return 0;
+  pruneDebuffs(s);
+  let dmg = 0;
+  for (const d of s.debuffs) {
+    if (d.kind === 'bleed' || d.kind === 'poison' || d.kind === 'burn') {
+      dmg += d.value || 0;
+    }
+  }
+  return dmg;
+}
+export function cleanseDebuffs(s) {
+  if (!s) return;
+  s.debuffs = [];
+}
 export function addShield(s, amount, sec) {
   if (!s) return;
   if (!Array.isArray(s.buffs)) s.buffs = [];

@@ -1653,6 +1653,17 @@ export const UI = {
         }
       }
     } catch { /* ignore */ }
+    // Active debuffs on player (red styling)
+    try {
+      Engine.pruneDebuffs && Engine.pruneDebuffs(state);
+      for (const d of (state.debuffs || [])) {
+        if (!d || !d.until || d.until <= now) continue;
+        const def = (Engine.DEBUFF_DEFS && Engine.DEBUFF_DEFS[d.kind]) || { name: d.kind, icon: '☠️' };
+        const secs = Math.ceil((d.until - now) / 1000);
+        const timer = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+        chips.push(`<span class="buff-chip" style="border-color:#ff0000;background:rgba(100,0,0,0.3)">${def.icon} ${def.name} <span class="buff-timer">${timer}</span></span>`);
+      }
+    } catch { /* ignore */ }
     bar.innerHTML = chips.join('');
     bar.parentElement.style.display = chips.length ? '' : 'none';
   },
@@ -2246,6 +2257,30 @@ export const UI = {
     const pct = enemy.maxHp > 0 ? Math.max(0, (enemy.hp / enemy.maxHp) * 100) : 0;
     setBarFill(e['enemy-hpfill'], pct);
     setText(e['enemy-hptext'], `${formatNum(Math.max(0, enemy.hp))} / ${formatNum(enemy.maxHp)}`);
+    // Show debuff icons on enemy
+    try {
+      let debuffBar = document.getElementById('enemy-debuffs');
+      if (enemy.debuffs && enemy.debuffs.length > 0) {
+        if (!debuffBar) {
+          debuffBar = document.createElement('div');
+          debuffBar.id = 'enemy-debuffs';
+          debuffBar.style.cssText = 'display:flex;gap:4px;justify-content:center;margin-top:4px;';
+          const hpBar = e['enemy-hpfill'];
+          if (hpBar && hpBar.parentElement && hpBar.parentElement.parentElement) {
+            hpBar.parentElement.parentElement.appendChild(debuffBar);
+          }
+        }
+        const now = Date.now();
+        debuffBar.innerHTML = enemy.debuffs.filter(d => d.until > now).map(d => {
+          const def = (typeof Engine !== 'undefined' && Engine.DEBUFF_DEFS && Engine.DEBUFF_DEFS[d.kind]) || { icon: '☠️', name: d.kind };
+          const secs = Math.ceil((d.until - now) / 1000);
+          return `<span title="${def.name} (${secs}s)" style="font-size:16px;filter:drop-shadow(0 0 3px #ff0000)">${def.icon}</span>`;
+        }).join('');
+        debuffBar.style.display = debuffBar.innerHTML ? 'flex' : 'none';
+      } else if (debuffBar) {
+        debuffBar.style.display = 'none';
+      }
+    } catch { /* ignore */ }
   },
 
   // Light per-tick refresh: hero bars, chips, skill cooldown.
