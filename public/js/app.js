@@ -3,14 +3,14 @@
 // ============================================================
 import { api } from './api.js?v=20260930ar';
 import * as Engine from './engine.js?v20261003bi';
-import { UI, esc, formatNum } from './ui.js?v20261003bd';
+import { UI, esc, formatNum } from './ui.js?v20261003bi';
 import { Auth } from './auth.js?v=20260930ar';
-import { GM } from './gm.js?v20261003az';
+import { GM } from './gm.js?v20261003bi';
 
 import { Raid } from './raid.js?v=20260930ar';
 import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261001e';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
-import { Realm } from './realm.js?v20261003ad';
+import { Realm } from './realm.js?v20261003bi';
 import { Audio } from './audio.js?v=20261003bg';
 
 const TICK_MS = 250;

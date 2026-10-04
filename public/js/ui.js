@@ -977,6 +977,8 @@ export const UI = {
   },
 
   showTab(name) {
+    // Fish tab temporarily locked (loot table bug under repair)
+    if (name === 'fish') return;
     this.activeTab = name;
     if (name !== 'quests') { this._stopQuestCountdowns(); this._stopQuestSync(); }
     if (name !== 'tokenshop') this._stopTokenCountdown();
