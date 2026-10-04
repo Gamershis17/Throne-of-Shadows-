@@ -1633,6 +1633,26 @@ export const UI = {
     const res = (state.potions && state.potions.resource) || 0;
     if (hp > 0) chips.push(`<span class="buff-chip">🧪 HP ×${hp}</span>`);
     if (res > 0) chips.push(`<span class="buff-chip">🔮 ×${res}</span>`);
+    // Active timed buffs (shields, heals, damage boosts) with icons and cooldown
+    try {
+      Engine.pruneBuffs && Engine.pruneBuffs(state);
+      for (const b of (state.buffs || [])) {
+        if (!b || !b.until || b.until <= now) continue;
+        const secs = Math.ceil((b.until - now) / 1000);
+        const timer = secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`;
+        if (b.kind === 'priest_shield' && b.amount > 0) {
+          chips.push(`<span class="buff-chip" style="border-color:#ffd700">🛡️ Power Word: Shield <span class="buff-timer">${timer}</span></span>`);
+        } else if (b.kind === 'pally_bubble' && b.amount > 0) {
+          chips.push(`<span class="buff-chip" style="border-color:#00e5ff">🫧 Divine Shield <span class="buff-timer">${timer}</span></span>`);
+        } else if (b.kind === 'shield' && b.amount > 0) {
+          chips.push(`<span class="buff-chip">🛡️ Shield <span class="buff-timer">${timer}</span></span>`);
+        } else if (b.kind === 'dmgPct') {
+          chips.push(`<span class="buff-chip" style="border-color:#ff4444">⚔️ +${b.pct}% DMG <span class="buff-timer">${timer}</span></span>`);
+        } else if (b.kind === 'healPct' || b.kind === 'hot') {
+          chips.push(`<span class="buff-chip" style="border-color:#44ff44">💚 Heal <span class="buff-timer">${timer}</span></span>`);
+        }
+      }
+    } catch { /* ignore */ }
     bar.innerHTML = chips.join('');
     bar.parentElement.style.display = chips.length ? '' : 'none';
   },

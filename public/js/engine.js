@@ -1051,7 +1051,8 @@ export function setSpellSlots(s, slots) {
 export function pruneBuffs(s) {
   if (!s || !Array.isArray(s.buffs)) return;
   const now = Date.now();
-  s.buffs = s.buffs.filter(b => b && b.until > now && (b.kind !== 'shield' || b.amount > 0));
+  const isShield = (k) => k === 'shield' || k === 'priest_shield' || k === 'pally_bubble';
+  s.buffs = s.buffs.filter(b => b && b.until > now && (!isShield(b.kind) || b.amount > 0));
 }
 export function addBuff(s, kind, pct, sec) {
   if (!s) return;
@@ -1064,6 +1065,16 @@ export function addShield(s, amount, sec) {
   if (!s) return;
   if (!Array.isArray(s.buffs)) s.buffs = [];
   s.buffs.push({ kind: 'shield', amount, until: Date.now() + sec * 1000 });
+}
+export function addPriestShield(s, amount, sec) {
+  if (!s) return;
+  if (!Array.isArray(s.buffs)) s.buffs = [];
+  s.buffs.push({ kind: 'priest_shield', amount, until: Date.now() + sec * 1000 });
+}
+export function addPallyBubble(s, amount, sec) {
+  if (!s) return;
+  if (!Array.isArray(s.buffs)) s.buffs = [];
+  s.buffs.push({ kind: 'pally_bubble', amount, until: Date.now() + sec * 1000 });
 }
 // Druid heals-over-time. Each hot ticks healPct% of max HP every everyMs.
 export function addHot(s, fx) {
@@ -1129,7 +1140,7 @@ export function damageTakenMult(s) {
 export function absorbShield(s, dmg) {
   let rem = dmg;
   for (const b of ((s && s.buffs) || [])) {
-    if (b.kind !== 'shield' || b.until <= Date.now() || b.amount <= 0) continue;
+    if ((b.kind !== 'shield' && b.kind !== 'priest_shield' && b.kind !== 'pally_bubble') || b.until <= Date.now() || b.amount <= 0) continue;
     const take = Math.min(b.amount, rem);
     b.amount -= take; rem -= take;
     if (rem <= 0) break;

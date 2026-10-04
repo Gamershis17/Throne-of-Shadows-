@@ -3492,7 +3492,7 @@ function renderBuffBar() {
     bar.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9999;pointer-events:none';
     document.body.appendChild(bar);
   }
-  const icons = { damage: '⚔️', shield: '🛡️', immunity: '✨', regen: '💚', speed: '⚡', xp: '📚', gold: '💰' };
+  const icons = { damage: '⚔️', shield: '🛡️', immunity: '✨', regen: '💚', speed: '⚡', xp: '📚', gold: '💰', priest_shield: '🛡️', pally_bubble: '🫧', heal: '💚' };
   bar.innerHTML = s.activeBuffs.map(b => {
     const secs = Math.ceil((b.expiresAt - now) / 1000);
     return `<div style="background:rgba(0,0,0,0.8);border:1px solid gold;border-radius:8px;padding:4px 10px;color:#fff;font-size:13px">${icons[b.type] || '✨'} ${b.name} ${secs}s</div>`;

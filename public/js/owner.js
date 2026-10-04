@@ -57,7 +57,7 @@
     setErr('search-err', 'Searching...');
     const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
     if (!ok) { setErr('search-err', '❌ ' + ((j && j.error) || 'Not found')); return; }
-    const d = j.data || j;
+    const d = j.dossier || j.data || j;
     $('search-result-card').classList.remove('hidden');
     $('target-name').textContent = d.username || u;
     $('target-level').textContent = 'Lv ' + (d.level || 1) + ' / ' + (d.xp || 0) + ' XP';
@@ -198,6 +198,32 @@
     setErr('patch-err', ok ? '✅ 2x event toggled (24h)' : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
 
+  // Grant Protection Buffs
+  bind('pow-priest-shield-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('patch-err', '❌ Enter username in Target Player Username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: 'priest_shield', value: 5000, duration: 300 }) });
+    setErr('patch-err', ok ? `✅ Granted Power Word: Shield to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+  bind('pow-pally-bubble-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('patch-err', '❌ Enter username in Target Player Username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: 'pally_bubble', value: 10000, duration: 300 }) });
+    setErr('patch-err', ok ? `✅ Granted Divine Shield to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+  bind('pow-dmg-boost-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('patch-err', '❌ Enter username in Target Player Username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: 'damage', value: 50, duration: 300 }) });
+    setErr('patch-err', ok ? `✅ Granted Damage Boost to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+  bind('pow-heal-btn2', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('patch-err', '❌ Enter username in Target Player Username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: 'heal', value: 0, duration: 30 }) });
+    setErr('patch-err', ok ? `✅ Healed ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+
   // Push Patch Notes
   bind('pow-patch-btn', async () => {
     const { ok, j } = await api('/api/gm/push-patch-notes', { method: 'POST', body: JSON.stringify({}) });
@@ -210,7 +236,7 @@
     if (!u) { setErr('patch-err', '❌ Enter username.'); return; }
     const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
     if (!ok) { setErr('patch-err', '❌ ' + ((j && j.error) || 'failed')); return; }
-    const buffs = (j.data && j.data.buffs) || j.buffs || [];
+    const buffs = (j.dossier && j.dossier.buffs) || (j.data && j.data.buffs) || j.buffs || [];
     setErr('patch-err', `✅ ${u} has ${buffs.length} active buffs: ${buffs.map(b => b.id || b).join(', ') || 'none'}`, true);
   });
 
