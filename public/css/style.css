@@ -6608,11 +6608,20 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
     flex-direction: row;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    align-items: center;
   }
   .inspect-sidebar .inspect-tab-btn {
     flex-shrink: 0;
     width: auto;
     white-space: nowrap;
+  }
+  .inspect-sidebar > div {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    flex-shrink: 0;
   }
 }
 
