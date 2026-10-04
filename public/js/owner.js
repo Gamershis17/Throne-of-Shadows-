@@ -55,19 +55,25 @@
     const u = getUser('player-search-input');
     if (!u) { setErr('search-err', '❌ Enter a username.'); return; }
     setErr('search-err', 'Searching...');
-    const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
-    if (!ok) { setErr('search-err', '❌ ' + ((j && j.error) || 'Not found')); return; }
-    const d = j.dossier || j.data || j;
-    $('search-result-card').classList.remove('hidden');
-    $('target-name').textContent = d.username || u;
-    $('target-level').textContent = 'Lv ' + (d.level || 1) + ' / ' + (d.xp || 0) + ' XP';
-    $('target-rebirths').textContent = d.rebirthCount || 0;
-    $('target-gold').textContent = d.gold || 0;
-    $('target-stage').textContent = d.stage || 1;
-    // Also fill the powers username
-    if ($('pow-user')) $('pow-user').value = d.username || u;
-    if ($('forge-user')) $('forge-user').value = d.username || u;
-    setErr('search-err', '✅ Found ' + (d.username || u), true);
+    try {
+      const r = await fetch('/api/gm/inspect', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr('search-err', `❌ Search failed (HTTP ${r.status}): ${j.error || 'Unknown error'}`); return; }
+      const d = j.dossier || j.data || j;
+      if (!d || !d.username) { setErr('search-err', '❌ No player data returned.'); return; }
+      $('search-result-card').classList.remove('hidden');
+      $('target-name').textContent = d.username || u;
+      $('target-level').textContent = 'Lv ' + (d.level || 1) + ' / ' + (d.xp || 0) + ' XP';
+      $('target-rebirths').textContent = d.rebirthCount || 0;
+      $('target-gold').textContent = d.gold || 0;
+      $('target-stage').textContent = d.stage || 1;
+      // Also fill the powers username
+      if ($('pow-user')) $('pow-user').value = d.username || u;
+      if ($('forge-user')) $('forge-user').value = d.username || u;
+      setErr('search-err', '✅ Found ' + (d.username || u), true);
+    } catch (e) {
+      setErr('search-err', '❌ Network error: ' + e.message);
+    }
   });
 
   // Powers: Give Gold
