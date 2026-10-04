@@ -5495,130 +5495,222 @@ export const UI = {
     const raceEmoji = (d.race && d.race.emoji) || '❓';
     const clsLine = [d.playerClass && d.playerClass.emoji, d.playerClass && d.playerClass.name,
       d.spec && d.spec.emoji, d.spec && d.spec.name].filter(Boolean).join(' ');
-    const tiles = [
-      { icon: '⚔️', label: 'Power', val: formatNum(d.power) },
-      { icon: '🌀', label: 'Raid Wave', val: String(d.bestRaidWave) },
-      { icon: '💀', label: 'Kills', val: formatNum(d.kills) },
-      { icon: '🏰', label: 'Stage', val: String(d.stage) },
-    ].map((t) => `
-      <div class="inspect-tile">
-        <div class="inspect-tile-icon">${t.icon}</div>
-        <div class="inspect-tile-label">${t.label}</div>
-        <div class="inspect-tile-val">${esc(t.val)}</div>
-      </div>`).join('');
 
+    // Remove any existing modal
+    const existing = document.getElementById('inspect-modal');
+    if (existing) existing.remove();
+
+    // Build gear HTML for gear tab
     const gearHtml = (d.gear || []).map((g) => {
       if (!g.item) {
-        return `<div class="inspect-gear empty"><span class="inspect-slot-name">${esc(g.slot)}</span><span class="muted small">— empty —</span></div>`;
+        return `<div class="inspect-gear-slot"><span class="inspect-stat-label">${esc(g.slot)}</span><span class="inspect-stat-label">— empty —</span></div>`;
       }
       const it = g.item;
+      const isRainbow = (it.rarity || '').toLowerCase() === 'rainbowstar';
       const statChips = Object.entries(it.stats || {}).slice(0, 4).map(([k, v]) =>
-        `<span class="gear-stat">${STAT_EMOJI[k] || '•'}+${formatStatVal(k, v)}</span>`).join(' ');
+        `<span class="inspect-stat-label">${STAT_EMOJI[k] || '•'}+${formatStatVal(k, v)}</span>`).join(' ');
       return `
-        <div class="inspect-gear rarity-${esc(it.rarity)}">
-          <span class="inspect-slot-name">${esc(g.slot)}</span>
-          <b>${esc(it.name)}</b>
-          ${it.enchant > 0 ? `<span class="enchant-tag">+${it.enchant}</span>` : ''}
-          <span class="rarity-tag">${esc(it.rarity)}</span>
-          <div class="gear-stats">${statChips}</div>
+        <div class="inspect-gear-slot${isRainbow ? ' rainbow-tier' : ''}">
+          <div>
+            <div class="inspect-stat-label" style="text-transform:uppercase;font-size:0.65rem;">${esc(g.slot)}</div>
+            <div style="font-weight:700;color:#fff;">${esc(it.name)}${it.enchant > 0 ? ` <span style="color:#fde047;">+${it.enchant}</span>` : ''}</div>
+            <div class="inspect-stat-label" style="font-size:0.7rem;">${esc(it.rarity)}</div>
+            <div style="margin-top:0.25rem;">${statChips}</div>
+          </div>
         </div>`;
     }).join('');
 
-    const petHtml = (d.pets && d.pets.length)
-      ? d.pets.map((p) => `<div class="inspect-pet"><span class="pet-emoji">${esc(p.emoji)}</span><span>${esc(p.name)}</span><span class="muted small">Lv ${p.level}</span></div>`).join('')
-      : '<p class="muted small">No active pets.</p>';
+    // Pet info for pet tab (first active pet)
+    const activePet = (d.pets && d.pets.length) ? d.pets[0] : null;
 
+    // Stat rows for stats tab
     const statRows = d.stats ? Object.entries(Engine.STAT_LABELS).map(([k, label]) => {
       const v = d.stats[k];
       if (v == null) return '';
-      return `<div class="inspect-stat-row"><span>${label}</span><b>${formatStatVal(k, v)}</b></div>`;
+      return `<div class="inspect-stat-row"><span class="inspect-stat-label">${label}</span><span class="inspect-stat-val">${formatStatVal(k, v)}</span></div>`;
     }).join('') : '';
 
-    const guildHtml = d.guild
-      ? `<div class="inspect-guild">🏰 <b>${esc(d.guild.name)}</b> <span class="muted">[${esc(d.guild.tag)}]</span></div>`
-      : `<div class="inspect-guild muted">No guild</div>`;
-
-    const onlineHtml = d.online
-      ? '<span class="online-dot on"></span> <span class="online-label on">Online</span>'
-      : '<span class="online-dot"></span> <span class="online-label muted">Offline</span>';
-
+    // Friend button logic
     let friendBtn = '';
     if (d.relation === 'self') {
-      friendBtn = '<button class="btn ghost" disabled>This is you</button>';
+      friendBtn = '<button class="inspect-tab-btn" disabled style="opacity:0.5;cursor:default;">This is you</button>';
     } else if (d.relation === 'friends') {
-      friendBtn = `<button class="btn ghost" data-inspect="unfriend" data-username="${esc(d.username)}">✓ Friends — Remove</button>`;
+      friendBtn = `<button class="inspect-tab-btn" data-inspect="unfriend" data-username="${esc(d.username)}">✓ Friends — Remove</button>`;
     } else if (d.relation === 'outgoing') {
-      friendBtn = `<button class="btn ghost" data-inspect="unfriend" data-username="${esc(d.username)}">Request sent — Cancel</button>`;
+      friendBtn = `<button class="inspect-tab-btn" data-inspect="unfriend" data-username="${esc(d.username)}">Request sent — Cancel</button>`;
     } else if (d.relation === 'incoming') {
-      friendBtn = `<button class="btn gold" data-inspect="accept" data-username="${esc(d.username)}">Accept request</button>`;
+      friendBtn = `<button class="inspect-tab-btn" data-inspect="accept" data-username="${esc(d.username)}">Accept request</button>`;
     } else {
-      friendBtn = `<button class="btn gold" data-inspect="add" data-username="${esc(d.username)}">➕ Add Friend</button>`;
+      friendBtn = `<button class="inspect-tab-btn" data-inspect="add" data-username="${esc(d.username)}">➕ Add Friend</button>`;
     }
 
-    const html = `
-      <div class="inspect-sheet">
-        <div class="inspect-head">
-          <div class="inspect-avatar">${raceEmoji}</div>
-          <div class="inspect-id">
-            <div class="inspect-name">${this.nameHtml(d.username, d.relation === 'self' ? meState : d)}</div>
-            <div class="inspect-lv">⚔️ Lv ${d.level}</div>
-            <div class="inspect-class">${esc(clsLine || '—')}</div>
-            ${d.title ? `<div class="inspect-title">👑 ${esc(d.title)}</div>` : ''}
-            <div class="inspect-online">${onlineHtml}</div>
-          </div>
+    const guildName = d.guild ? `${esc(d.guild.name)} [${esc(d.guild.tag)}]` : 'No Guild';
+    const titleText = d.title ? `👑 ${esc(d.title)}` : 'No Title';
+
+    // Build the modal HTML
+    const modalEl = document.createElement('div');
+    modalEl.id = 'inspect-modal';
+    modalEl.innerHTML = `
+  <div class="inspect-dialog">
+    <div class="inspect-header">
+      <div class="inspect-header-profile">
+        <div class="inspect-avatar-box">${raceEmoji}</div>
+        <div>
+          <h3 class="inspect-user-name">
+            <span id="inspect-player-name">${esc(d.username)}</span>
+            <span id="inspect-online-status" class="inspect-status-dot${d.online ? ' online' : ''}"></span>
+          </h3>
+          <p class="inspect-user-sub">
+            <span id="inspect-player-title">${titleText}</span> • <span id="inspect-guild-name">${guildName}</span>
+          </p>
+          <p class="inspect-user-sub" style="opacity:0.7;">${esc(clsLine || '')} • ⚔️ Lv ${d.level}</p>
         </div>
-        <div class="inspect-tiles">${tiles}</div>
-        ${guildHtml}
-        <h4 class="inspect-h">🛡️ Equipped</h4>
-        <div class="inspect-gear-list">${gearHtml}</div>
-        <h4 class="inspect-h">📊 Stats</h4>
-        <div class="inspect-stats">${statRows}</div>
-        <h4 class="inspect-h">🐾 Pets</h4>
-        <div class="inspect-pets">${petHtml}</div>
-        <div class="inspect-compare hidden" id="inspect-compare"></div>
-        <div class="inspect-actions">
-          <button class="btn" data-inspect="compare">⚖️ Compare with me</button>
+      </div>
+      <button id="close-inspect-btn" class="inspect-close-btn">&times;</button>
+    </div>
+    <div class="inspect-body">
+      <div class="inspect-sidebar">
+        <button id="tab-btn-overview" class="inspect-tab-btn active" data-tab="overview">Overview</button>
+        <button id="tab-btn-gear" class="inspect-tab-btn" data-tab="gear">Equipment &amp; Gear</button>
+        <button id="tab-btn-pet" class="inspect-tab-btn" data-tab="pet">Active Pet</button>
+        <button id="tab-btn-stats" class="inspect-tab-btn" data-tab="stats">Attribute Stats</button>
+        <div style="margin-top:auto;padding-top:0.5rem;display:flex;flex-direction:column;gap:0.5rem;">
+          <button class="inspect-tab-btn" data-inspect="compare">⚖️ Compare</button>
           ${friendBtn}
         </div>
-      </div>`;
+      </div>
+      <div class="inspect-content">
+        <div id="tab-content-overview" class="inspect-tab-pane">
+          <div class="inspect-grid-4">
+            <div class="inspect-card">
+              <span class="inspect-card-label">Level</span>
+              <p id="inspect-level" class="inspect-card-value">Lv ${d.level}</p>
+            </div>
+            <div class="inspect-card">
+              <span class="inspect-card-label">Power Score</span>
+              <p id="inspect-power" class="inspect-card-value">${formatNum(d.power)}</p>
+            </div>
+            <div class="inspect-card">
+              <span class="inspect-card-label">World Stage</span>
+              <p id="inspect-stage" class="inspect-card-value">${d.stage}</p>
+            </div>
+            <div class="inspect-card">
+              <span class="inspect-card-label">Raid Wave</span>
+              <p id="inspect-raid" class="inspect-card-value">${d.bestRaidWave || 0}</p>
+            </div>
+          </div>
+          <div class="inspect-section">
+            <h4 class="inspect-section-title">Details</h4>
+            <div class="inspect-stat-row">
+              <span class="inspect-stat-label">Kills</span>
+              <span class="inspect-stat-val">${formatNum(d.kills)}</span>
+            </div>
+            <div class="inspect-stat-row">
+              <span class="inspect-stat-label">Status</span>
+              <span class="inspect-stat-val">${d.online ? '🟢 Online' : '⚫ Offline'}</span>
+            </div>
+          </div>
+        </div>
+        <div id="tab-content-gear" class="inspect-tab-pane hidden">
+          <div id="inspect-gear-grid" class="inspect-gear-grid">
+            ${gearHtml || '<p class="inspect-stat-label">No gear equipped.</p>'}
+          </div>
+        </div>
+        <div id="tab-content-pet" class="inspect-tab-pane hidden">
+          <div class="inspect-section">
+            <h4 class="inspect-section-title">Active Pet Companion</h4>
+            ${activePet ? `
+            <div class="inspect-stat-row">
+              <span class="inspect-stat-label">Pet Name</span>
+              <span id="inspect-pet-name" class="inspect-stat-val">${esc(activePet.emoji || '')} ${esc(activePet.name)}</span>
+            </div>
+            <div class="inspect-stat-row">
+              <span class="inspect-stat-label">Pet Level</span>
+              <span id="inspect-pet-level" class="inspect-stat-val">Lv ${activePet.level}</span>
+            </div>
+            ` : '<p class="inspect-stat-label">No active pets.</p>'}
+          </div>
+        </div>
+        <div id="tab-content-stats" class="inspect-tab-pane hidden">
+          <div class="inspect-section">
+            <h4 class="inspect-section-title">Combat Stats &amp; Records</h4>
+            ${statRows || '<p class="inspect-stat-label">No stats available.</p>'}
+          </div>
+          <div class="inspect-compare hidden" id="inspect-compare" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
 
-    const close = this.modal({
-      title: '🔍 Player Inspect',
-      html,
-      buttons: [{ label: 'Close' }],
-      wide: true,
+    document.body.appendChild(modalEl);
+
+    // Close button
+    modalEl.querySelector('#close-inspect-btn').addEventListener('click', () => {
+      modalEl.remove();
+    });
+    // Click backdrop to close
+    modalEl.addEventListener('click', (e) => {
+      if (e.target === modalEl) modalEl.remove();
+    });
+    // Escape to close
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modalEl.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Tab switching
+    modalEl.querySelectorAll('.inspect-tab-btn[data-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        modalEl.querySelectorAll('.inspect-tab-btn[data-tab]').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        modalEl.querySelectorAll('.inspect-tab-pane').forEach((pane) => pane.classList.add('hidden'));
+        const target = modalEl.querySelector(`#tab-content-${tab}`);
+        if (target) target.classList.remove('hidden');
+      });
     });
 
-    // Wire the inspect-modal buttons (delegated on the overlay).
-    const overlay = document.querySelector('#modal-root .modal-overlay:last-child');
-    if (overlay) {
-      overlay.addEventListener('click', async (e) => {
-        const btn = e.target.closest('button[data-inspect]');
-        if (!btn || btn.disabled) return;
-        const action = btn.dataset.inspect;
-        const uname = btn.dataset.username || d.username;
-        try {
-          if (action === 'add' && h.onFriendAdd) {
-            await h.onFriendAdd(uname);
-            close(); this.openInspect(uname, meState, autoCompare);
-          } else if (action === 'accept' && h.onFriendAccept) {
-            await h.onFriendAccept(uname);
-            close(); this.openInspect(uname, meState, autoCompare);
-          } else if (action === 'unfriend' && h.onFriendRemove) {
-            await h.onFriendRemove(uname, { confirm: false });
-            close(); this.openInspect(uname, meState, autoCompare);
-          } else if (action === 'compare') {
-            this.renderCompare($('#inspect-compare'), d, meState);
-          }
-        } catch (err) {
-          this.toast(err && err.message ? err.message : 'Action failed.', 'error');
+    // Friend/compare buttons (delegated)
+    modalEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-inspect]');
+      if (!btn || btn.disabled) return;
+      const action = btn.dataset.inspect;
+      const uname = btn.dataset.username || d.username;
+      try {
+        if (action === 'add' && h.onFriendAdd) {
+          await h.onFriendAdd(uname);
+          modalEl.remove(); this.openInspect(uname, meState, autoCompare);
+        } else if (action === 'accept' && h.onFriendAccept) {
+          await h.onFriendAccept(uname);
+          modalEl.remove(); this.openInspect(uname, meState, autoCompare);
+        } else if (action === 'unfriend' && h.onFriendRemove) {
+          await h.onFriendRemove(uname, { confirm: false });
+          modalEl.remove(); this.openInspect(uname, meState, autoCompare);
+        } else if (action === 'compare') {
+          // Switch to stats tab and render comparison
+          modalEl.querySelectorAll('.inspect-tab-btn[data-tab]').forEach((b) => b.classList.remove('active'));
+          const statsBtn = modalEl.querySelector('[data-tab="stats"]');
+          if (statsBtn) statsBtn.classList.add('active');
+          modalEl.querySelectorAll('.inspect-tab-pane').forEach((pane) => pane.classList.add('hidden'));
+          const statsPane = modalEl.querySelector('#tab-content-stats');
+          if (statsPane) statsPane.classList.remove('hidden');
+          this.renderCompare(modalEl.querySelector('#inspect-compare'), d, meState);
         }
-      });
-      // "Quick compare" entry point opens the sheet with comparison expanded.
-      if (autoCompare) this.renderCompare($('#inspect-compare'), d, meState);
+      } catch (err) {
+        this.toast(err && err.message ? err.message : 'Action failed.', 'error');
+      }
+    });
+
+    // Auto-compare if requested
+    if (autoCompare) {
+      const statsBtn = modalEl.querySelector('[data-tab="stats"]');
+      if (statsBtn) statsBtn.click();
+      this.renderCompare(modalEl.querySelector('#inspect-compare'), d, meState);
     }
   },
-
   // Side-by-side stat comparison: you vs the inspected hero.
   renderCompare(box, them, meState) {
     if (!box) return;
