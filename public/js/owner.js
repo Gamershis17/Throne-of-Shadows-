@@ -122,7 +122,7 @@
   bind('pow-buff-btn', async () => {
     const u = getUser('pow-user');
     if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
-    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffId: 'god-buff', durationHr: 1 }) });
+    const { ok, j } = await api('/api/gm/grant-buff', { method: 'POST', body: JSON.stringify({ username: u, buffType: 'damage', value: 100, duration: 3600 }) });
     setErr('powers-err', ok ? `✅ Granted god-buff to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
 
