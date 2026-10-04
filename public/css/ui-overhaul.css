@@ -1292,14 +1292,7 @@ body {
   padding: 1.25rem;
 }
 
-.talent-tree {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  justify-items: center;
-  padding: 1rem 0;
-}
-
+/* NOTE: .talent-tree styles removed — game uses native flex-column layout from style.css. */
 /* NOTE: .talent-node styles removed — game uses native styles from style.css
    to avoid conflicts with the class talent tree rendering. */
 
