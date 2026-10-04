@@ -408,8 +408,14 @@ body.owner-page {
         <button class="owner-tab-btn" data-tab="broadcast">
           <span class="tab-icon">📢</span> Broadcast &amp; Notes
         </button>
+        <button class="owner-tab-btn" data-tab="stage">
+          <span class="tab-icon">🔄</span> Stage Reset &amp; Restore
+        </button>
         <button class="owner-tab-btn" data-tab="realm">
           <span class="tab-icon">🌌</span> Realm &amp; Events
+        </button>
+        <button class="owner-tab-btn" data-tab="soon">
+          <span class="tab-icon">🚧</span> Coming Soon
         </button>
       </aside>
 
@@ -512,23 +518,19 @@ body.owner-page {
           </div>
 
           <div class="panel-box">
-            <h2 class="panel-title">Stage Reset &amp; Restore</h2>
+            <h2 class="panel-title">Buff Management</h2>
             <div class="form-group">
-              <label class="owner-label">Type RESET-TO-STAGE-1 to confirm global reset</label>
+              <label class="owner-label">Check Player Buffs</label>
               <div class="input-inline">
-                <input type="text" id="reset-confirm" class="owner-input" placeholder="RESET-TO-STAGE-1">
-                <button id="reset-stages-btn" class="owner-btn danger">Reset All Stages</button>
+                <input type="text" id="buff-check-user" class="owner-input" placeholder="Username...">
+                <button id="buff-check-btn" class="owner-btn small info">Check</button>
               </div>
             </div>
-            <div id="reset-err" class="owner-err"></div>
             <div class="form-group">
-              <label class="owner-label">Restore Player from Backup</label>
-              <div class="input-inline">
-                <input type="text" id="restore-user" class="owner-input" placeholder="Username...">
-                <button id="restore-btn" class="owner-btn warning">Restore</button>
-              </div>
+              <label class="owner-label">2x Event Toggle (24h)</label>
+              <button id="pow-2x-btn" class="owner-btn gold">Toggle 2x Event</button>
             </div>
-            <div id="restore-err" class="owner-err"></div>
+            <div id="patch-err" class="owner-err"></div>
           </div>
         </section>
 
@@ -607,21 +609,51 @@ body.owner-page {
           <div class="panel-box">
             <h2 class="panel-title">Patch Notes Pusher</h2>
             <div class="form-group">
-              <label class="owner-label">2x Event Toggle (24h)</label>
-              <button id="pow-2x-btn" class="owner-btn gold">Toggle 2x Event</button>
-            </div>
-            <div class="form-group">
               <label class="owner-label">Push Patch Notes</label>
               <button id="pow-patch-btn" class="owner-btn gold">Push Latest Patch Notes</button>
             </div>
+            <div id="broadcast-patch-err" class="owner-err"></div>
+          </div>
+        </section>
+
+        <!-- Tab: Stage Reset & Restore -->
+        <section id="tab-stage" class="owner-tab-pane hidden">
+          <div class="panel-box">
+            <h2 class="panel-title">Stage Reset &amp; Restore</h2>
+            <p class="panel-desc">Emergency stage resets affect world progress database values immediately.</p>
             <div class="form-group">
-              <label class="owner-label">Check Player Buffs</label>
+              <label class="owner-label">Type RESET-TO-STAGE-1 to confirm global reset</label>
               <div class="input-inline">
-                <input type="text" id="buff-check-user" class="owner-input" placeholder="Username...">
-                <button id="buff-check-btn" class="owner-btn small info">Check</button>
+                <input type="text" id="reset-confirm" class="owner-input" placeholder="RESET-TO-STAGE-1">
+                <button id="reset-stages-btn" class="owner-btn danger">Reset All Stages</button>
               </div>
             </div>
-            <div id="patch-err" class="owner-err"></div>
+            <div id="reset-err" class="owner-err"></div>
+            <div class="form-group">
+              <label class="owner-label">Restore Player from Backup</label>
+              <div class="input-inline">
+                <input type="text" id="restore-user" class="owner-input" placeholder="Username...">
+                <button id="restore-btn" class="owner-btn warning">Restore</button>
+              </div>
+            </div>
+            <div id="restore-err" class="owner-err"></div>
+          </div>
+
+          <div class="panel-box">
+            <h2 class="panel-title">Backup Controls</h2>
+            <div class="button-row">
+              <button id="backup-btn" class="owner-btn warning">Backup Current Realm Stage Data</button>
+            </div>
+            <div id="backup-err" class="owner-err"></div>
+          </div>
+        </section>
+
+        <!-- Tab: Coming Soon -->
+        <section id="tab-soon" class="owner-tab-pane hidden">
+          <div class="panel-box" style="text-align:center; padding: 3rem 1.5rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🚧</div>
+            <h2 class="panel-title">Coming Soon</h2>
+            <p class="panel-desc">New owner tools are under construction.<br>Check back after the next update.</p>
           </div>
         </section>
 
@@ -646,15 +678,6 @@ body.owner-page {
               </div>
             </div>
             <div id="event-err" class="owner-err"></div>
-          </div>
-
-          <div class="panel-box">
-            <h2 class="panel-title">Stage Maintenance &amp; Reset Controls</h2>
-            <p class="panel-desc">Emergency stage resets affect world progress database values immediately.</p>
-            <div class="button-row">
-              <button id="backup-btn" class="owner-btn warning">Backup Current Realm Stage Data</button>
-            </div>
-            <div id="backup-err" class="owner-err"></div>
           </div>
         </section>
 
