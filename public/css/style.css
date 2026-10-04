@@ -6795,3 +6795,29 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
 .inspect-content::-webkit-scrollbar-thumb:hover {
   background: rgba(234, 179, 8, 0.5);
 }
+
+/* ==========================================================================
+   GM CONSOLE RAINBOW FRAME
+   Animated rainbow border around the screen when GM console is open
+   ========================================================================== */
+#gm-rainbow-frame {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 99998;
+  border: 4px solid transparent;
+  border-image: linear-gradient(45deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff00ff, #ff0000) 1;
+  animation: gmRainbowShift 3s linear infinite;
+  display: none;
+}
+#gm-rainbow-frame.active {
+  display: block;
+}
+@keyframes gmRainbowShift {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+/* Glow effect on the frame */
+#gm-rainbow-frame.active {
+  box-shadow: inset 0 0 20px rgba(255, 0, 255, 0.3), inset 0 0 40px rgba(0, 255, 255, 0.15);
+}
