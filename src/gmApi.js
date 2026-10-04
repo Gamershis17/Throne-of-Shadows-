@@ -1296,6 +1296,7 @@ const BUFF_TYPES = {
   damage: 'Damage Boost', shield: 'Protection Shield', immunity: 'Immunity',
   heal: 'Instant Heal', regen: 'Regeneration', speed: 'Attack Speed',
   xp: 'XP Boost', gold: 'Gold Boost',
+  priest_shield: 'Power Word: Shield', pally_bubble: 'Divine Shield',
 };
 router.post(
   '/gm/grant-buff',
