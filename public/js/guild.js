@@ -4,18 +4,18 @@
 // Full rework: hall header (banner, level/XP, Message of the Day) plus
 // sub-tabs: Chat | News | Roster | Perks | Rewards | Info.
 //
-// Wiring (done by the parent, e.g. app.js):
+// Wiring (done by the parent, e.g. app.js?v=20261005pv):
 //   import { renderGuildSection, syncGuildPerks } from './guild.js';
 //   renderGuildSection(document.getElementById('guild-section'), api);
 //   syncGuildPerks(api); // after login, so perks apply even if the
 //                        // player never opens the guild tab
 //
-// `api` may expose get(path)/post(path, body) helpers (like api.js), or
+// `api` may expose get(path)/post(path, body) helpers (like api.js?v=20261005pv), or
 // be omitted entirely — this module falls back to same-origin fetch.
 // ============================================================
 import { Audio } from './audio.js?v=20260930ar';
 import { setGuildPerks } from './engine.js?v20261003x';
-import { UI } from './ui.js?v20261003x';
+import { UI } from './ui.js?v=20261005pv';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({
