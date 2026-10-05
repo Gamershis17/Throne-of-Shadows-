@@ -1,10 +1,10 @@
 // ============================================================
-// raid.js — Raid mode: endless-wave PvE.
+// raid.js?v=20261005pv — Raid mode: endless-wave PvE.
 // ESM module. Pure except for module-level run state (decoupled from
 // engine state; best-wave persistence lives on state.raid via engine.js).
 //
-// WIRING (for app.js — the parent agent owns this part):
-//   import { Raid } from './raid.js';
+// WIRING (for app.js?v=20261005pv — the parent agent owns this part):
+//   import { Raid } from './raid.js?v=20261005pv';
 //
 //   1. Mode switch: the #mode-switch button with data-mode="raid" already
 //      routes through your mode handler. When the new mode is 'raid',
@@ -119,5 +119,20 @@ export const Raid = {
     _wave = 0;
     const best = state && state.raid ? this.best(state) : null;
     return { wavesCleared, best }; // best lives on state.raid
+  },
+
+  // ADDITIVE (Oct 10 preview — Level-120 Raids info tab): read-only
+  // snapshot for the preview-only Raids view. Pure getters; mutates
+  // nothing, so existing behavior is byte-for-byte identical.
+  summary(state) {
+    try {
+      ensureRaidState(state);
+      return {
+        active: _active,
+        wave: _wave || 0,
+        best: (state && state.raid && typeof state.raid.best === 'number') ? state.raid.best : 0,
+        bossEvery: 5, // raid bosses appear every 5th wave (see isRaidBoss)
+      };
+    } catch { return { active: false, wave: 0, best: 0, bossEvery: 5 }; }
   },
 };
