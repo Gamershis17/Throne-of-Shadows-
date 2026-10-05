@@ -1,13 +1,16 @@
 // ============================================================
-// app.js — boot, session flow, game loops, combat wiring.
+// app.js?v=20261005pv — boot, session flow, game loops, combat wiring.
 // ============================================================
-import { api } from './api.js?v=20260930ar';
+import { api } from './api.js?v=20261005pv';
+// Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
+// the coordinator must add one (this module is new).
+import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261005pv';
 import * as Engine from './engine.js?v20261003bk';
-import { UI, esc, formatNum } from './ui.js?v20261003bk';
+import { UI, esc, formatNum } from './ui.js?v=20261005pv';
 import { Auth } from './auth.js?v=20260930ar';
-import { GM } from './gm.js?v20261003bk';
+import { GM } from './gm.js?v=20261005pv';
 
-import { Raid } from './raid.js?v=20260930ar';
+import { Raid } from './raid.js?v=20261005pv';
 import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261001e';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
 import { Realm } from './realm.js?v20261003bk';
@@ -286,7 +289,7 @@ async function boot() {
     },
     // HUD 👥 button: open the friends modal and fill it with live data.
     onOpenFriends: async () => {
-      if (isGuest()) { UI.showFriendsModal(null, true); return; }
+      if (isGuest() || isTest()) { UI.showFriendsModal(null, true); return; }
       try {
         const data = await api.getFriends();
         App.friends = data;
@@ -378,6 +381,9 @@ async function boot() {
       saveNow();
     },
   };
+  // Oct 10 batch — TEST MODE (?test=1&preview=1): skip the server gate,
+  // auth, and session lookup entirely; boot a fresh local-only character.
+  if (isTestMode()) { await enterTestMode(); return; }
   UI.init()
   // Start Oct 10 countdown banner
   if (typeof UI !== 'undefined' && UI.startShipCountdown) UI.startShipCountdown();;
@@ -429,6 +435,8 @@ function showAuthView() {
 }
 
 const isGuest = () => App.user && App.user.role === GUEST_ROLE;
+// Oct 10 batch — test mode role (?test=1&preview=1): offline, local-only session.
+const isTest = () => App.user && App.user.role === TEST_ROLE;
 
 // One-off persist used outside the autosave loop (character creation,
 // settings that save immediately, migration points). Guests write to
@@ -436,11 +444,14 @@ const isGuest = () => App.user && App.user.role === GUEST_ROLE;
 async function persistNow() {
   if (!App.state) return;
   if (isGuest()) { saveGuest(App.user.username, App.state); return; }
+  if (isTest()) { saveTestState(App.state); return; } // test mode: test namespace only, never the server
   await api.saveState(App.state);
 }
 
 // "This needs an account" prompt for server-gated features in guest mode.
 function promptUpgrade(feature) {
+  // Test mode has no account to upgrade to — the session is throwaway.
+  if (isTest()) { UI.toast('🧪 Test mode: accounts are disabled — reload without ?test=1 for your real game.', 'warn'); return; }
   UI.modal({
     title: '🔐 ' + feature,
     html: `<p>Guests can't use ${esc(feature)} — it's tied to an account.</p>
@@ -461,6 +472,7 @@ function openCharacterSheet() {
 // Guest → account migration: register, upload the local guest save to the
 // new account, clear the guest blob, and reboot into the authed session.
 async function openUpgradeModal() {
+  if (isTest()) { UI.toast('🧪 Test mode: account creation is disabled.', 'warn'); return; }
   if (!isGuest()) return;
   const errId = 'upgrade-err';
   UI.modal({
@@ -525,13 +537,8 @@ async function enterApp(user) {
   }
 }
 
-// Test mode: ?test=1 — fresh test character, localStorage only, no server sync
-// For testing changes without affecting live account
-const TEST_MODE = new URLSearchParams(window.location.search).get('test') === '1';
-if (TEST_MODE) {
-  console.log('🧪 TEST MODE: offline, fresh character');
-  try { localStorage.removeItem('tos_test_state'); } catch {}
-}
+// Test mode (?test=1&preview=1 only) now lives in testmode.js?v=20261005pv — see
+// enterTestMode() below. ?test=1 alone does nothing.
 
 // Guest entry: no server calls at all. State comes from localStorage
 // (or starts fresh); the character-creation flow is shared with authed
@@ -540,6 +547,24 @@ async function enterGuest(name) {
   const g = loadGuest();
   const user = { username: name, role: GUEST_ROLE };
   await enterAppWithState(user, g ? g.state : null, g ? g.lastSeen : null);
+}
+
+// Oct 10 batch — TEST MODE entry (?test=1&preview=1 only): a fresh,
+// local-only test character. No server gate, no auth, no session lookup —
+// the api layer throws offline for every request (see api.js?v=20261005pv request()),
+// and all saves go to the 'tos_test_' localStorage namespace (see saveNow
+// / persistNow). The live account's keys and server data are never touched.
+async function enterTestMode() {
+  clearTestState(); // fresh test character every test boot
+  UI.init();
+  Audio.init(); // registers first-gesture unlock + button click ticks
+  // Notification prefs live on the save; UI.notify() reads them through this.
+  UI.setNotifPrefsProvider(() => (App.state && App.state.settings && App.state.settings.notif) || {});
+  // Quest live-sync reads state through this (avoids a bare global).
+  UI.setStateProvider(() => App.state);
+  showTestBadge();
+  const user = { username: 'Test Hero', role: TEST_ROLE };
+  await enterAppWithState(user, null, null);
 }
 
 async function enterAppWithState(user, raw, lastSeenAt) {
@@ -954,7 +979,7 @@ function startGame() {
   if (upgradeCard) upgradeCard.classList.toggle('hidden', !isGuest());
   const logoutBtn = UI.el('logout-btn');
   if (logoutBtn) logoutBtn.textContent = isGuest() ? '🚪 Exit guest session' : 'Logout';
-  UI.refreshAccountCard(App.user, isGuest());
+  UI.refreshAccountCard(App.user, isGuest() || isTest());
   const upBtn = UI.el('guest-upgrade-btn');
   if (upBtn) upBtn.addEventListener('click', openUpgradeModal);
   // Character sheet: tap the top hero panel (.hud-id) or the battle hero
@@ -1009,9 +1034,13 @@ function startGame() {
     }
   }, TICK_MS);
   App.saveTimer = setInterval(() => saveNow(), AUTOSAVE_MS);
-  App.statusTimer = setInterval(() => pollMaintenance(), 60000);
-  pollBroadcast();
-  startBroadcastStream();
+  // Test mode: pure local session — no server polling of any kind
+  // (maintenance, broadcasts, presence, snapshots, admin commands).
+  if (!isTest()) {
+    App.statusTimer = setInterval(() => pollMaintenance(), 60000);
+    pollBroadcast();
+    startBroadcastStream();
+  }
   // Online presence: ping every 60s, refresh count every 60s
   const updateOnlineCount = async () => {
     try {
@@ -1021,8 +1050,10 @@ function startGame() {
       if (el) el.textContent = onlineCount ?? '–';
     } catch (e) { /* ignore */ }
   };
-  updateOnlineCount();
-  App.presenceTimer = setInterval(updateOnlineCount, 60000);
+  if (!isTest()) {
+    updateOnlineCount();
+    App.presenceTimer = setInterval(updateOnlineCount, 60000);
+  }
   // Gameplay snapshots for GM live view: send current activity every 30s
   const sendSnapshot = async () => {
     try {
@@ -1041,8 +1072,10 @@ function startGame() {
       await api.snapshot(action, detail);
     } catch (e) { /* ignore */ }
   };
-  sendSnapshot();
-  App.snapshotTimer = setInterval(sendSnapshot, 30000);
+  if (!isTest()) {
+    sendSnapshot();
+    App.snapshotTimer = setInterval(sendSnapshot, 30000);
+  }
   // Poll for admin commands from owner panel
   const pollCommands = async () => {
     try {
@@ -1068,8 +1101,11 @@ function startGame() {
       }
     } catch {}
   };
-  setInterval(pollCommands, 15000);
-  pollCommands();
+  // Test mode: skip the admin-command poll (a server read; the session is local-only).
+  if (!isTest()) {
+    setInterval(pollCommands, 15000);
+    pollCommands();
+  }
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') saveNow(true);
     // FPS/battery: pause ambient CSS animations while the tab is hidden.
@@ -1094,6 +1130,13 @@ async function saveNow(beaconOnly = false) {
     // Guests never touch the server: persist locally only.
     const ok = saveGuest(App.user.username, App.state);
     if (!beaconOnly) UI.setSaveIndicator(ok ? '● saved locally' : '● local save failed', ok);
+    return;
+  }
+  if (isTest()) {
+    // Test mode never touches the server: persist to the test namespace only.
+    // (beaconOnly is irrelevant here — there is no server save to beacon.)
+    const ok = saveTestState(App.state);
+    if (!beaconOnly) UI.setSaveIndicator('● test save (local)', ok);
     return;
   }
   if (beaconOnly) { api.saveStateBeacon(App.state); return; }
@@ -2862,6 +2905,7 @@ function doChangeHeroName(name) {
 }
 
 async function doChangePassword(cur, nw, nw2) {
+  if (isTest()) return UI.toast('🧪 Test mode: no account to manage here.', 'warn');
   if (isGuest()) return UI.toast('Guests have no password — create an account first.', 'warn');
   if (!cur) return UI.toast('Enter your current password.', 'warn');
   if (!nw || nw.length < 8) return UI.toast('New password must be at least 8 characters.', 'warn');
@@ -2879,6 +2923,7 @@ async function doChangePassword(cur, nw, nw2) {
 }
 
 async function doChangeUsername(nu, pw) {
+  if (isTest()) return UI.toast('🧪 Test mode: no account to manage here.', 'warn');
   if (isGuest()) return UI.toast('Guests have no username — create an account first.', 'warn');
   const clean = String(nu || '').trim();
   if (!/^[A-Za-z0-9_]{3,20}$/.test(clean)) {
@@ -3005,7 +3050,7 @@ function partyCtx() {
   return {
     mpParty: App.mpParty,
     username: App.user && App.user.username,
-    isGuest: isGuest(),
+    isGuest: isGuest() || isTest(),
     ownNpcCount: s && Array.isArray(s.party) ? s.party.length : 0,
   };
 }
@@ -3027,7 +3072,7 @@ function partyBonus() {
 
 // Refetch the party view. Offline-tolerant: keeps the stale cache on error.
 async function loadMpParty() {
-  if (isGuest() || !App.user) { App.mpParty = null; }
+  if (isGuest() || isTest() || !App.user) { App.mpParty = null; }
   else {
     try {
       const res = await api.partyGet();
@@ -3040,11 +3085,11 @@ async function loadMpParty() {
 // Poll GET /api/party every 30s only while the Party tab is active.
 function setMpPoll(on) {
   if (App.mpPoll) { clearInterval(App.mpPoll); App.mpPoll = null; }
-  if (on && !isGuest()) App.mpPoll = setInterval(() => { loadMpParty(); }, 30000);
+  if (on && !isGuest() && !isTest()) App.mpPoll = setInterval(() => { loadMpParty(); }, 30000);
 }
 
 async function doMpCreate() {
-  if (isGuest()) { promptUpgrade('multiplayer parties'); return; }
+  if (isGuest() || isTest()) { promptUpgrade('multiplayer parties'); return; }
   try {
     const res = await api.partyCreate();
     App.mpParty = res.party;
@@ -3054,7 +3099,7 @@ async function doMpCreate() {
 }
 
 async function doMpJoin(code) {
-  if (isGuest()) { promptUpgrade('multiplayer parties'); return; }
+  if (isGuest() || isTest()) { promptUpgrade('multiplayer parties'); return; }
   code = String(code || '').trim().toUpperCase();
   if (!code) { UI.toast('Enter the 6-letter party code.', 'error'); return; }
   try {
@@ -3428,8 +3473,8 @@ function mountGuild() {
     if (!s.guideTabs || typeof s.guideTabs !== 'object') s.guideTabs = {};
     if (!s.guideTabs.guild) { s.guideTabs.guild = true; saveNow(); }
   }
-  if (isGuest()) {
-    // Guilds are server-side: guests get the upgrade prompt instead of a 401.
+  if (isGuest() || isTest()) {
+    // Guilds are server-side: guests (and test-mode heroes) get the upgrade prompt instead of a 401.
     el.innerHTML = `<p class="muted small">🏰 Guilds need an account — create one and your guest progress comes with you.</p>
       <button class="btn gold wide" id="guild-upgrade-btn" type="button">✨ Create account</button>`;
     el.querySelector('#guild-upgrade-btn').addEventListener('click', openUpgradeModal);
@@ -3575,6 +3620,10 @@ async function onTabSwitch(tab, force = false) {
   else if (tab === 'guild') { mountGuild(); }
   else if (tab === 'quests') UI.renderQuests(s);
   else if (tab === 'talents') UI.renderTalents(s);
+  // OCT10 PREVIEW — Level-120 Raids info tab. The button/view only exist
+  // when window.__PREVIEW (inserted by ui.js?v=20261005pv); this branch additionally
+  // gates the render, and renderRaidsPreview itself no-ops without preview.
+  else if (tab === 'raids') { if (window.__PREVIEW) { try { UI.renderRaidsPreview(s, Raid); } catch { /* preview-only */ } } }
   else if (tab === 'battle') {
     UI.renderBattle(s);
     if (App.enemy) UI.setEnemy(App.enemy);
@@ -3627,7 +3676,7 @@ async function loadRanks() {
 }
 
 async function loadFriends() {
-  if (isGuest()) {
+  if (isGuest() || isTest()) {
     UI.renderFriends(null, true);
     UI.showFriendsModal(null, true);
     UI.setFriendBadge(0);
