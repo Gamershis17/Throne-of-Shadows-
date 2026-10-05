@@ -1,5 +1,5 @@
 // ============================================================
-// ui.js?v=20261005pv — all DOM rendering for Throne of Shadows.
+// ui.js?v=20261005pw — all DOM rendering for Throne of Shadows.
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
@@ -1147,7 +1147,7 @@ export const UI = {
 
   // Preview-only render for the Raids tab. Called from app.js?v=20261005pv onTabSwitch
   // under window.__PREVIEW; `Raid` is passed in by app.js?v=20261005pv (which already
-  // imports raid.js?v=20261005pv), so ui.js?v=20261005pv gains no new import. Info display only —
+  // imports raid.js?v=20261005pv), so ui.js?v=20261005pw gains no new import. Info display only —
   // no raid mechanics. Gated on player level >= Engine.MAX_LEVEL (120).
   renderRaidsPreview(s, Raid) {
     try {
@@ -2375,7 +2375,7 @@ export const UI = {
       if (this.els['rebirth-note']) this.els['rebirth-note'].innerHTML =
         `Return to <b class="gold-text">level 1</b> — everything else stays (stage, gold, gear, pets, titles).<br>` +
         `<span class="muted">Rebirths so far: ${state.rebirthCount || 0} · 🌀 Tokens: <b>${state.rebirthTokens || 0}</b> ` +
-        `(spend in the 🌀 Token Shop).<br>` +
+        (window.__PREVIEW ? `.<br>` : `(spend in the 🌀 Token Shop).<br>`) +
         `Next climb: XP requirements ×${nextMult.toFixed(2)}.</span>`;
     }
     this.updateHeroPanel(state, Engine.computeStats(state), null);
