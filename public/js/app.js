@@ -6,15 +6,15 @@ import { api } from './api.js?v=20261005pv';
 // the coordinator must add one (this module is new).
 import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261005pv';
 import * as Engine from './engine.js?v20261003bk';
-import { UI, esc, formatNum } from './ui.js?v=20261005py';
+import { UI, esc, formatNum } from './ui.js?v=20261005pz';
 import { Auth } from './auth.js?v=20260930ar';
-import { GM } from './gm.js?v=20261005py';
+import { GM } from './gm.js?v=20261005pz';
 
 import { Raid } from './raid.js?v=20261005pv';
 import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261001e';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
 import { Realm } from './realm.js?v20261003bk';
-import { Audio } from './audio.js?v=20261003bg';
+import { Audio } from './audio.js?v=20261005pz';
 
 const TICK_MS = 250;
 const AUTOSAVE_MS = 15000;
@@ -3621,7 +3621,7 @@ async function onTabSwitch(tab, force = false) {
   else if (tab === 'quests') UI.renderQuests(s);
   else if (tab === 'talents') UI.renderTalents(s);
   // OCT10 PREVIEW — Level-120 Raids info tab. The button/view only exist
-  // when window.__PREVIEW (inserted by ui.js?v=20261005py); this branch additionally
+  // when window.__PREVIEW (inserted by ui.js?v=20261005pz); this branch additionally
   // gates the render, and renderRaidsPreview itself no-ops without preview.
   else if (tab === 'raids') { if (window.__PREVIEW) { try { UI.renderRaidsPreview(s, Raid); } catch { /* preview-only */ } } }
   else if (tab === 'battle') {
