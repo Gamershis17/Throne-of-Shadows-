@@ -17,7 +17,7 @@
 //  A failed fetch keeps the last good data instead of erroring out.
 // ============================================================
 
-import { api } from './api.js?v=20260930ar';
+import { api } from './api.js?v=20261005pv';
 import { COUNTRIES, countryFlag } from './engine.js?v20261003s';
 
 const NAMES = Object.fromEntries(COUNTRIES);
