@@ -1,10 +1,10 @@
 // ============================================================
-// ui.js?v=20261005py — all DOM rendering for Throne of Shadows.
+// ui.js?v=20261005pz — all DOM rendering for Throne of Shadows.
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
 import * as Engine from './engine.js?v20261003bi';
-import { Audio } from './audio.js?v=20261003bg';
+import { Audio } from './audio.js?v=20261005pz';
 import { api } from './api.js?v=20261005pv';
 
 const $ = (sel, root) => (root || document).querySelector(sel);
@@ -312,6 +312,36 @@ export const UI = {
         if (tsBtn) tsBtn.style.display = 'none';
         const tsSec = document.getElementById('tab-tokenshop');
         if (tsSec) tsSec.style.display = 'none';
+      }
+    } catch { /* never break boot */ }
+    // Oct 10 batch (preview): auto-sell loot checkbox removed.
+    try {
+      if (window.__PREVIEW) {
+        const autoToggle = document.querySelector('.autosell-toggle');
+        if (autoToggle) autoToggle.style.display = 'none';
+      }
+    } catch { /* never break boot */ }
+    // Oct 10 batch (preview): Town tab button. renderTown() already exists;
+    // app.js routes tab === 'town' to it. Just needs the button + view.
+    try {
+      if (window.__PREVIEW) {
+        const tabbar = document.getElementById('tabbar');
+        const titlesBtn = document.querySelector('#tabbar .tab-btn[data-tab="titles"]');
+        if (tabbar && titlesBtn && !document.querySelector('#tabbar .tab-btn[data-tab="town"]')) {
+          const townBtn = document.createElement('button');
+          townBtn.className = 'tab-btn';
+          townBtn.dataset.tab = 'town';
+          townBtn.innerHTML = '<span class="ticon">🏘️</span><span>Town</span>';
+          titlesBtn.insertAdjacentElement('afterend', townBtn);
+        }
+        const content = document.getElementById('tab-content');
+        if (content && !document.getElementById('tab-town')) {
+          const sec = document.createElement('section');
+          sec.id = 'tab-town';
+          sec.className = 'tab';
+          sec.innerHTML = '<h2>🏘️ Town</h2><div id="town-content"><p class="muted">Loading town…</p></div>';
+          content.appendChild(sec);
+        }
       }
     } catch { /* never break boot */ }
     // Bottom tab bar
@@ -1107,6 +1137,11 @@ export const UI = {
     // Leaving the inn by any route (e.g. tab bar) stops its glow loop;
     // enterInn() restarts it after switching to the inn tab.
     if (name !== 'inn') this.stopInnGlow();
+    // Oct 10 batch: Town ambience — crowd chatter + street sounds while in town.
+    try {
+      if (name === 'town') Audio.startTownAmbience();
+      else Audio.stopTownAmbience();
+    } catch { /* audio is optional */ }
     try { Audio.play('tab'); } catch { /* ignore */ }
     $$('#tabbar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     $$('#tab-content .tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
@@ -1146,7 +1181,7 @@ export const UI = {
 
   // Preview-only render for the Raids tab. Called from app.js?v=20261005pv onTabSwitch
   // under window.__PREVIEW; `Raid` is passed in by app.js?v=20261005pv (which already
-  // imports raid.js?v=20261005pv), so ui.js?v=20261005py gains no new import. Info display only —
+  // imports raid.js?v=20261005pv), so ui.js?v=20261005pz gains no new import. Info display only —
   // no raid mechanics. Gated on player level >= Engine.MAX_LEVEL (120).
   renderRaidsPreview(s, Raid) {
     try {
@@ -4133,7 +4168,7 @@ export const UI = {
       while (remaining > 0) {
         const inSlot = Math.min(STACK, remaining);
         totalSlots++;
-        slotsHtml += `<div class="bag-slot" title="${this.esc(tier.name)} × ${inSlot}">` +
+        slotsHtml += `<div class="bag-slot" title="${esc(tier.name)} × ${inSlot}">` +
           `<span class="bag-slot-emoji">${tier.emoji}</span>` +
           (inSlot > 1 ? `<span class="bag-slot-count">${inSlot}</span>` : '') +
           `</div>`;
@@ -4149,6 +4184,20 @@ export const UI = {
   },
 
   renderTown(state) {
+    // Oct 10 batch (preview): Town hub. Builds its own view structure.
+    const container = document.getElementById('town-content');
+    if (!container) return;
+    // Build the town layout once
+    if (!document.getElementById('inn-upgrade-list')) {
+      container.innerHTML = `
+        <div class="town-section"><h3>🏠 Inn Upgrades</h3><div id="inn-upgrade-list"></div></div>
+        <div class="town-section"><h3>🏪 NPC Shop</h3>
+          <button id="town-sell-all" class="btn small gold">Sell All Loot</button>
+          <div id="town-sell-list" class="bag-slots"></div>
+        </div>
+        <div class="town-section"><h3>🍖 Food & Supplies</h3><p class="muted small">More vendors coming soon.</p></div>
+        <div class="town-section"><h3>🐾 Pet Supplies</h3><p class="muted small">More vendors coming soon.</p></div>`;
+    }
     // Inn upgrades (Rank 0/10, no gold cost)
     const innList = document.getElementById('inn-upgrade-list');
     if (innList && Engine.INN_UPGRADES) {
@@ -4205,7 +4254,7 @@ export const UI = {
         list.innerHTML = '<p class="muted small">Your bags are empty. Go loot something!</p>';
       } else {
         list.innerHTML = sellable.map((it, i) => 
-          `<div class="bag-item"><div class="bag-item-name">${this.esc(it.id)}</div><div class="bag-item-qty">×${it.qty}</div><div class="muted small">${this.esc(it.bagName)}</div></div>`
+          `<div class="bag-item"><div class="bag-item-name">${esc(it.id)}</div><div class="bag-item-qty">×${it.qty}</div><div class="muted small">${esc(it.bagName)}</div></div>`
         ).join('');
       }
     }
