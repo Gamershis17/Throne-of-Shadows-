@@ -1,11 +1,11 @@
 // ============================================================
-// ui.js — all DOM rendering for Throne of Shadows.
+// ui.js?v=20261005pv — all DOM rendering for Throne of Shadows.
 // engine.js stays DOM-free; this file owns the DOM.
-// app.js wires behavior via UI.handlers.
+// app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
 import * as Engine from './engine.js?v20261003bi';
 import { Audio } from './audio.js?v=20261003bg';
-import { api } from './api.js?v=20260930ar';
+import { api } from './api.js?v=20261005pv';
 
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -69,6 +69,20 @@ const UI_SPEC_EMOJI = { tank: '🛡️', dps: '⚔️', healer: '💚', classic:
 const DISCORD_URL = 'https://discord.gg/mMeUhKBh6j'; // community Discord server invite
 const YOUTUBE_URL = 'https://www.youtube.com/@ThroneofShadows-q9f'; // official YouTube channel
 const TIKTOK_URL = 'https://www.tiktok.com/@throneofshadowsofficial'; // official TikTok
+
+// ---------------- Holiday calendar (PREVIEW only) ----------------
+// Annual recurring events (month/day only). Display-only: event gameplay
+// effects are undecided, so nothing here hooks into the game loop.
+// In non-preview this is an empty array: zero trace, zero behavior change.
+const HOLIDAYS = window.__PREVIEW ? [
+  { id: 'valentines',   name: 'Valentines',     emoji: '💘', startM: 2,  startD: 10, endM: 2,  endD: 16, label: 'Feb 10 – Feb 16' },
+  { id: 'luck',         name: 'Luck Festival',  emoji: '🍀', startM: 3,  startD: 10, endM: 3,  endD: 17, label: 'Mar 10 – Mar 17' },
+  { id: 'spring',       name: 'Spring Bloom',   emoji: '🌸', startM: 4,  startD: 15, endM: 4,  endD: 22, label: 'Apr 15 – Apr 22' },
+  { id: 'solstice',     name: 'Summer Solstice',emoji: '☀️', startM: 7,  startD: 1,  endM: 7,  endD: 7,  label: 'Jul 1 – Jul 7' },
+  { id: 'harvest',      name: 'Harvest Feast',  emoji: '🌽', startM: 11, startD: 20, endM: 11, endD: 30, label: 'Nov 20 – Nov 30' },
+  { id: 'halloween',    name: 'Halloween',      emoji: '🎃', startM: 10, startD: 3,  endM: 10, endD: 31, label: 'Oct 3 – Oct 31' },
+  { id: 'winter-veil',  name: 'Winter Veil',    emoji: '❄️', startM: 12, startD: 20, endM: 1,  endD: 5,  label: 'Dec 20 – Jan 5' },
+] : [];
 
 export function formatNum(n) {
   n = Math.floor(Number(n) || 0);
@@ -189,7 +203,7 @@ export const UI = {
       if (raw) this.settings = { ...this.settings, ...JSON.parse(raw) };
     } catch { /* ignore */ }
     // UI style theme: default to modern before login (no player state yet);
-    // app.js overrides from state.uiStyle once the player is loaded.
+    // app.js?v=20261005pv overrides from state.uiStyle once the player is loaded.
     if (!document.body.dataset.uistyle) document.body.dataset.uistyle = 'modern';
     document.body.classList.toggle('reduce-motion', !!this.settings.reduceMotion);
     document.body.classList.toggle('perf', !!this.settings.performanceMode);
@@ -247,6 +261,60 @@ export const UI = {
       if (el) el.addEventListener(evt, fn);
     };
 
+    // Oct 10 batch (PREVIEW ONLY): Bag tab replaces the locked Fishing tab.
+    // Non-preview executes none of this — tab bar and views stay as today.
+    if (window.__PREVIEW) {
+      try {
+        // (a) Hide the fish tab button. #tabbar is display:flex (style.css:431),
+        // so the Inventory (gear) button flows into the vacated slot.
+        const fishBtn = document.querySelector('#tabbar .tab-btn[data-tab="fish"]');
+        if (fishBtn) fishBtn.style.display = 'none';
+        // (c) Insert the 👜 Bag button immediately after Inventory.
+        const gearBtn = document.querySelector('#tabbar .tab-btn[data-tab="gear"]');
+        if (gearBtn && !document.querySelector('#tabbar .tab-btn[data-tab="bag"]')) {
+          const bagBtn = document.createElement('button');
+          bagBtn.className = 'tab-btn';
+          bagBtn.dataset.tab = 'bag';
+          bagBtn.innerHTML = '<span class="ticon">👜</span><span>Bag</span>';
+          gearBtn.insertAdjacentElement('afterend', bagBtn);
+        }
+        // Bag view section (mirrors the .tab structure of tab-gear).
+        // showTab() activates it generically by id 'tab-bag'; app.js?v=20261005pv already
+        // routes onTab('bag') -> UI.renderBag(s).
+        const content = document.getElementById('tab-content');
+        if (content && !document.getElementById('tab-bag')) {
+          const sec = document.createElement('section');
+          sec.id = 'tab-bag';
+          sec.className = 'tab';
+          sec.innerHTML = '<h2>👜 Bag</h2><div id="bag-list"></div>';
+          content.appendChild(sec);
+        }
+        // Preview-gated styles for renderBag() output (no CSS file touched).
+        if (!document.getElementById('preview-bag-css')) {
+          const st = document.createElement('style');
+          st.id = 'preview-bag-css';
+          st.textContent = [
+            '.bag-card{margin:0 0 12px;background:rgba(255,255,255,.04);border:1px solid #444;border-radius:10px;padding:10px}',
+            '.bag-header{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px}',
+            '.bag-emoji{font-size:1.1rem}',
+            '.bag-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}',
+            '.bag-item{background:rgba(0,0,0,.35);border:1px solid #444;border-radius:8px;padding:8px;text-align:center}',
+            '.bag-item-name{font-size:.72rem;word-break:break-word}'
+          ].join('');
+          document.head.appendChild(st);
+        }
+      } catch { /* preview-only tweaks must never break boot */ }
+    }
+
+    // Oct 10 batch (preview): Rebirth Token Shop tab removed from the tab bar.
+    try {
+      if (window.__PREVIEW) {
+        const tsBtn = document.querySelector('#tabbar .tab-btn[data-tab="tokenshop"]');
+        if (tsBtn) tsBtn.style.display = 'none';
+        const tsSec = document.getElementById('tab-tokenshop');
+        if (tsSec) tsSec.style.display = 'none';
+      }
+    } catch { /* never break boot */ }
     // Bottom tab bar
     $$('#tabbar .tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -257,6 +325,10 @@ export const UI = {
         this.showTab(btn.dataset.tab);
       });
     });
+
+    // OCT10 PREVIEW — Level-120 Raids tab (🐉). Gated on window.__PREVIEW:
+    // non-preview never calls this, so no button/view/listener exists there.
+    if (window.__PREVIEW) { try { this._initRaidsPreviewTab(); } catch { /* preview-only; never break boot */ } }
 
     // Battle controls
     $$('#mode-switch .mode-btn').forEach(btn => {
@@ -496,6 +568,8 @@ export const UI = {
     });
     // Token shop
     listen('tab-tokenshop', 'click', (e) => {
+      // Oct 10 batch (preview): Rebirth Token Shop removed — no purchases possible.
+      if (window.__PREVIEW) return;
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       if (btn.dataset.action === 'buy-token' && this.handlers.onBuyTokenItem) {
@@ -534,6 +608,8 @@ export const UI = {
       if (btn.dataset.action === 'recruit-tank' && h.onRecruitTank) h.onRecruitTank();
       if (btn.dataset.action === 'dismiss-tank' && h.onDismissTank) h.onDismissTank();
       if (btn.dataset.action === 'buy-egg' && h.onBuyEgg) h.onBuyEgg(btn.dataset.tier);
+      // Preview: breeding/combining removed — ignore breed/combine actions entirely.
+      if (window.__PREVIEW && (btn.dataset.action === 'breed-select' || btn.dataset.action === 'combine-select' || btn.dataset.action === 'do-breed' || btn.dataset.action === 'do-combine')) return;
       if (btn.dataset.action === 'breed-select') this._toggleBreedSelect(btn.dataset.id);
       if (btn.dataset.action === 'combine-select') this._toggleCombineSelect(btn.dataset.id);
       if (btn.dataset.action === 'do-breed' && h.onBreedPets) h.onBreedPets();
@@ -743,7 +819,7 @@ export const UI = {
       if (e.target.checked) this.maybeSyncWeather();
     });
     // Audio prefs live on the game state (per player / guest save), not in
-    // localStorage — app.js syncs the checkboxes via applyAudioPrefs().
+    // localStorage — app.js?v=20261005pv syncs the checkboxes via applyAudioPrefs().
     listen('set-sfx', 'change', (e) => this.handlers.onSfx && this.handlers.onSfx(e.target.checked));
     listen('set-music', 'change', (e) => this.handlers.onMusic && this.handlers.onMusic(e.target.checked));
     // Music track picker + world-follow toggle (Settings).
@@ -1024,6 +1100,8 @@ export const UI = {
   showTab(name) {
     // Fish tab temporarily locked (loot table bug under repair)
     if (name === 'fish') return;
+    // Oct 10 batch (preview): Rebirth Token Shop removed — never navigate to it.
+    if (window.__PREVIEW && name === 'tokenshop') return;
     this.activeTab = name;
     if (name !== 'quests') { this._stopQuestCountdowns(); this._stopQuestSync(); }
     if (name !== 'tokenshop') this._stopTokenCountdown();
@@ -1034,6 +1112,68 @@ export const UI = {
     $$('#tabbar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     $$('#tab-content .tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
     this.handlers.onTab && this.handlers.onTab(name);
+  },
+
+  // ---- OCT10 PREVIEW: Level-120 Raids tab (🐉) ----
+  // Inserts the tab button + view entirely via JS. Only invoked under
+  // window.__PREVIEW (see init hook); non-preview never runs this, so the
+  // tab bar and #tab-content are untouched there. Idempotent + try-caught.
+  _initRaidsPreviewTab() {
+    try {
+      if (!window.__PREVIEW) return;
+      const bar = document.getElementById('tabbar');
+      if (!bar || bar.querySelector('[data-tab="raids"]')) return; // already added
+      // Button: right after the Token Shop button (sensible spot).
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn';
+      btn.dataset.tab = 'raids';
+      btn.innerHTML = '<span class="ticon">🐉</span><span>Raids</span>';
+      const after = bar.querySelector('[data-tab="tokenshop"]');
+      if (after && after.nextSibling) bar.insertBefore(btn, after.nextSibling);
+      else bar.appendChild(btn);
+      btn.addEventListener('click', () => this.showTab('raids'));
+      // View: <section id="tab-raids" class="tab"> alongside the others.
+      const content = document.getElementById('tab-content');
+      if (content && !document.getElementById('tab-raids')) {
+        const view = document.createElement('section');
+        view.id = 'tab-raids';
+        view.className = 'tab';
+        const ts = document.getElementById('tab-tokenshop');
+        if (ts && ts.nextSibling) content.insertBefore(view, ts.nextSibling);
+        else content.appendChild(view);
+      }
+    } catch { /* preview-only */ }
+  },
+
+  // Preview-only render for the Raids tab. Called from app.js?v=20261005pv onTabSwitch
+  // under window.__PREVIEW; `Raid` is passed in by app.js?v=20261005pv (which already
+  // imports raid.js?v=20261005pv), so ui.js?v=20261005pv gains no new import. Info display only —
+  // no raid mechanics. Gated on player level >= Engine.MAX_LEVEL (120).
+  renderRaidsPreview(s, Raid) {
+    try {
+      if (!window.__PREVIEW) return;
+      const root = document.getElementById('tab-raids');
+      if (!root) return;
+      const need = (Engine && typeof Engine.MAX_LEVEL === 'number') ? Engine.MAX_LEVEL : 120;
+      const lvl = Math.max(1, Math.floor(Number((s && s.level) || 1)));
+      if (lvl < need) {
+        root.innerHTML = '<div class="card"><h2>🐉 Raids</h2>' +
+          '<p class="muted">Endless-wave raid battles unlock at <b>level ' + need + '</b>.</p>' +
+          '<p class="muted small">You are level ' + lvl + ' — keep pushing, hero.</p></div>';
+        return;
+      }
+      let info = { active: false, wave: 0, best: 0, bossEvery: 5 };
+      try { if (Raid && typeof Raid.summary === 'function') info = Raid.summary(s) || info; } catch { /* keep defaults */ }
+      const runLine = info.active
+        ? '🌀 Run in progress — Wave <b>' + esc(String(info.wave)) + '</b>'
+        : 'No raid run active. Start one from <b>Battle → mode switch → 🌀 Raid</b>.';
+      root.innerHTML =
+        '<div class="card"><h2>🐉 Level-' + need + ' Raids</h2>' +
+        '<p class="muted small">Endless waves. A raid boss (epic+ loot) appears every ' + info.bossEvery +
+        ' waves. Death ends the run — loot already earned is kept.</p>' +
+        '<div class="row"><span>🏅 Best wave: <b>' + esc(String(info.best)) + '</b></span></div>' +
+        '<div class="row"><span>' + runLine + '</span></div></div>';
+    } catch { /* preview-only */ }
   },
 
   // ---------------- Inn (AFK safe zone) ----------------
@@ -1213,7 +1353,7 @@ export const UI = {
     return !!(root && root.children && root.children.length);
   },
 
-  // Shows/hides the global "PAUSED — world frozen" pill. Called by app.js
+  // Shows/hides the global "PAUSED — world frozen" pill. Called by app.js?v=20261005pv
   // on pause transitions only.
   setPaused(on) {
     const el = this.els['pause-pill'] || document.getElementById('pause-pill');
@@ -1571,10 +1711,64 @@ export const UI = {
     }
   },
 
+  // ---------------- Holiday calendar (PREVIEW only) ----------------
+  // Returns the holiday active for the local date, or null. Never throws.
+  _activeHoliday() {
+    try {
+      if (!window.__PREVIEW || !HOLIDAYS.length) return null;
+      const now = new Date();
+      const key = (now.getMonth() + 1) * 100 + now.getDate();
+      for (const h of HOLIDAYS) {
+        const s = h.startM * 100 + h.startD;
+        const e2 = h.endM * 100 + h.endD;
+        // Winter Veil wraps the year boundary (Dec → Jan).
+        const inWindow = s <= e2 ? (key >= s && key <= e2) : (key >= s || key <= e2);
+        if (inWindow) return h;
+      }
+      return null;
+    } catch { return null; }
+  },
+
+  // Holiday banner + Holiday Calendar section (Settings view). Runs only
+  // under ?preview=1; injects its own DOM and never touches live messaging.
+  _updateHolidayPreview() {
+    if (!window.__PREVIEW) return;
+    const active = this._activeHoliday();
+    // Banner: reuse the existing #event-banner node, but ONLY when it is
+    // hidden — never override the live Halloween/2x messaging.
+    try {
+      const banner = document.getElementById('event-banner');
+      if (banner && active && banner.classList.contains('hidden')) {
+        banner.className = 'halloween-banner';
+        banner.textContent = `${active.emoji} ${active.name} is here! 🎉`;
+        banner.classList.remove('hidden');
+      }
+    } catch { /* ignore */ }
+    // Calendar section: inject once into the Settings view.
+    try {
+      if (document.getElementById('holiday-calendar-card')) return;
+      const tab = document.getElementById('tab-settings');
+      if (!tab) return;
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = 'holiday-calendar-card';
+      const rows = HOLIDAYS.map((h) =>
+        `<div class="row-between"><span>${h.emoji} <b>${esc(h.name)}</b>` +
+        (active === h ? ' <span class="new-badge">NOW</span>' : '') +
+        `</span><span class="muted small">${esc(h.label)}</span></div>` +
+        `<div class="muted tiny">effects coming soon</div>`
+      ).join('');
+      card.innerHTML = `<h3>🎄 Holiday Calendar</h3><p class="muted small">Annual events — they return every year.</p>${rows}`;
+      tab.appendChild(card);
+    } catch { /* ignore */ }
+  },
+
   updateHUD(state, user) {
     const e = this.els;
     // Event banners (Halloween + 2x).
     this.updateEventBanner(state);
+    // Holiday calendar (preview only — inert unless ?preview=1).
+    try { if (window.__PREVIEW) this._updateHolidayPreview(); } catch { /* preview-only, never crash */ }
     const race = Engine.RACES[state.race] || {};
     const cls = Engine.CLASSES[state.playerClass] || {};
     const spec = Engine.SPECS[state.spec] || {};
@@ -1831,7 +2025,7 @@ export const UI = {
   },
 
   // Class-change picker: class cards only — no spec or pet re-pick.
-  // onPick(id) is called after the confirm step (app.js spends the token).
+  // onPick(id) is called after the confirm step (app.js?v=20261005pv spends the token).
   openChangeClassModal(state, onPick) {
     const cur = state.playerClass;
     const cards = Object.entries(Engine.CLASSES).map(([id, c]) => {
@@ -5163,8 +5357,8 @@ export const UI = {
       ? `<button class="btn small ghost sell-btn" data-action="sell-pet" data-id="${esc(pet.uid)}" data-sell-text="${esc(sellLabel)}" title="Sell this pet for gold"><span class="sell-label">${esc(sellLabel)}</span></button>`
       : `<span class="muted small" title="This pet is special and cannot be sold">\u{1F512} unsellable</span>`;
     const feedBtn = `<button class="btn small" data-action="feed-pet" data-id="${esc(pet.uid)}" ${pet.hunger >= 100 ? 'disabled' : ''}>\u{1F356} Feed (\u{1F4B0}${formatNum(cost)})</button>`;
-    const breedBtn = `<button class="btn small ghost" data-action="breed-select" data-id="${esc(pet.uid)}" title="Select for breeding">\u{1F495}</button>`;
-    const combineBtn = sp.unsellable ? '' : `<button class="btn small ghost" data-action="combine-select" data-id="${esc(pet.uid)}" title="Select for combining">\u{1F500}</button>`;
+    const breedBtn = window.__PREVIEW ? '' : `<button class="btn small ghost" data-action="breed-select" data-id="${esc(pet.uid)}" title="Select for breeding">\u{1F495}</button>`;
+    const combineBtn = (window.__PREVIEW || sp.unsellable) ? '' : `<button class="btn small ghost" data-action="combine-select" data-id="${esc(pet.uid)}" title="Select for combining">\u{1F500}</button>`;
     const petBtns = [feedBtn, setActiveBtn, secondBtn, breedBtn, combineBtn, sellBtn].filter(Boolean).join('<span class="btn-sep" aria-hidden="true">|</span>');
     return `<div class="pet-slot is-expanded ${rcls}${active ? ' is-active' : ''}" data-action="pet-select" data-id="${esc(pet.uid)}">
       <div class="pet-xhead">${this.petIconHtml(sp, 'pet-xicon')}
@@ -5334,6 +5528,8 @@ export const UI = {
     </div>`;
   },
   renderTokenShop(state) {
+    // Oct 10 batch (preview): Rebirth Token Shop removed — never render it.
+    if (window.__PREVIEW) return;
     this._tokenState = state;
     Engine.ensureFxUnlocked(state);
     const stock = Engine.tokenShopStock(Date.now());
