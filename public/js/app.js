@@ -6,9 +6,9 @@ import { api } from './api.js?v=20261005pv';
 // the coordinator must add one (this module is new).
 import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261005pv';
 import * as Engine from './engine.js?v20261003bk';
-import { UI, esc, formatNum } from './ui.js?v=20261005pw';
+import { UI, esc, formatNum } from './ui.js?v=20261005py';
 import { Auth } from './auth.js?v=20260930ar';
-import { GM } from './gm.js?v=20261005pw';
+import { GM } from './gm.js?v=20261005py';
 
 import { Raid } from './raid.js?v=20261005pv';
 import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261001e';
@@ -3621,7 +3621,7 @@ async function onTabSwitch(tab, force = false) {
   else if (tab === 'quests') UI.renderQuests(s);
   else if (tab === 'talents') UI.renderTalents(s);
   // OCT10 PREVIEW — Level-120 Raids info tab. The button/view only exist
-  // when window.__PREVIEW (inserted by ui.js?v=20261005pw); this branch additionally
+  // when window.__PREVIEW (inserted by ui.js?v=20261005py); this branch additionally
   // gates the render, and renderRaidsPreview itself no-ops without preview.
   else if (tab === 'raids') { if (window.__PREVIEW) { try { UI.renderRaidsPreview(s, Raid); } catch { /* preview-only */ } } }
   else if (tab === 'battle') {

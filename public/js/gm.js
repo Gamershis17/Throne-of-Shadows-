@@ -2,7 +2,7 @@
 // gm.js?v=20261005pv — GM console UI. Only opened for staff roles.
 // ============================================================
 import { api } from './api.js?v=20261005pv';
-import { UI, esc, formatNum } from './ui.js?v=20261005pw';
+import { UI, esc, formatNum } from './ui.js?v=20261005py';
 import { PRIVILEGED_SETS, TITLES, BADGES, CLASSES, SPECS } from './engine.js?v20261003x';
 
 const SET_IDS = Object.keys(PRIVILEGED_SETS);
@@ -220,7 +220,7 @@ export const GM = {
     const gmTarget = root.querySelector('.gm-target');
     const hdrH = gmHeader ? gmHeader.offsetHeight : 0;
     // Dynamic offsets travel as CSS custom properties; style.css owns how
-    // they're applied (same pattern as the toast/tooltip vars in ui.js?v=20261005pw).
+    // they're applied (same pattern as the toast/tooltip vars in ui.js?v=20261005py).
     if (gmTarget && hdrH) gmTarget.style.setProperty('--gm-target-top', hdrH + 'px');
     const jumpOffset = hdrH + (gmTarget ? gmTarget.offsetHeight : 0) + 12;
     root.querySelectorAll('[id^="gm-sec-"]').forEach((sec) => {
