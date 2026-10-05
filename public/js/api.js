@@ -1,7 +1,11 @@
 // ============================================================
-// api.js — thin fetch wrapper over the contract HTTP API.
+// api.js?v=20261005pv — thin fetch wrapper over the contract HTTP API.
 // All calls use credentials:'same-origin' and JSON.
 // ============================================================
+
+// Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
+// the coordinator must add one (this module is new).
+import { isTestMode } from './testmode.js?v=20261005pv';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -28,6 +32,15 @@ function clearStaleAuth() {
 }
 
 async function request(path, options = {}) {
+  // Oct 10 batch — test mode (?test=1&preview=1): the session is pure
+  // local state. Block EVERY server call at this single chokepoint so the
+  // live account can never be read or written. Callers already treat this
+  // as an offline failure (try/catch -> toasts / empty states / retries).
+  if (isTestMode()) {
+    const err = new Error('Test mode: offline - no server calls.');
+    err.status = 0;
+    throw err;
+  }
   const headers = { ...JSON_HEADERS, ...(options.headers || {}) };
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
