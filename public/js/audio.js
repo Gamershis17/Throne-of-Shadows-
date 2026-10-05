@@ -526,6 +526,82 @@ export const Audio = {
   // Procedural tavern-at-night: steady filtered rain, abstract indistinct
   // chatter (no intelligible speech), and occasional distant thunder.
   // Plays only while inside the inn; obeys the SFX on/off setting.
+  _preTownTrack: null,
+
+  stopTownAmbience() {
+    try {
+      const t = this._town;
+      this._town = null;
+      if (!t) return;
+      t.timers.forEach((tm) => clearTimeout(tm));
+      if (this._ctx) {
+        const now = this._ctx.currentTime;
+        try { t.gain.gain.setTargetAtTime(0.0001, now, 0.4); } catch { /* ignore */ }
+        t.nodes.forEach((n) => { try { n.stop(now + 1.5); } catch { /* ignore */ } });
+      }
+      // Restore the music track from before town
+      try {
+        if (this._preTownTrack) { this._switchTrack(this._preTownTrack); this._preTownTrack = null; }
+      } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  },
+
+  startTownAmbience() {
+    try {
+      if (!this.prefs.sfx) return;
+      if (!this.unlock()) return;
+      const ctx = this._ctx;
+      if (!ctx || ctx.state !== 'running') return;
+      this.stopTownAmbience();
+      const master = ctx.createGain();
+      master.gain.value = 0;
+      master.connect(this._sfxGain);
+      // Town crowd: overlapping babble bursts = distant people talking.
+      // Denser than the inn (more voices, more frequent).
+      const crowd = () => {
+        try {
+          if (this.prefs.sfx && this._town) {
+            const n = 3 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < n; i++) this._babble(ctx, master);
+          }
+        } catch { /* ignore */ }
+        if (this._town) timers.push(setTimeout(crowd, 1800 + Math.random() * 3500));
+      };
+      // Background: soft wind through the streets.
+      const wind = ctx.createBufferSource();
+      wind.buffer = this._getNoiseBuffer();
+      wind.loop = true;
+      wind.playbackRate.value = 0.4;
+      const wf = ctx.createBiquadFilter();
+      wf.type = 'lowpass';
+      wf.frequency.value = 400;
+      const wg = ctx.createGain();
+      wg.gain.value = 0.05;
+      const wlfo = ctx.createOscillator();
+      wlfo.frequency.value = 0.11;
+      const wlfoG = ctx.createGain();
+      wlfoG.gain.value = 0.02;
+      wlfo.connect(wlfoG);
+      wlfoG.connect(wg.gain);
+      wind.connect(wf);
+      wf.connect(wg);
+      wg.connect(master);
+      wind.start();
+      wlfo.start();
+      const timers = [];
+      timers.push(setTimeout(crowd, 800));
+      master.gain.setTargetAtTime(1, ctx.currentTime, 1.5); // fade in
+      this._town = { gain: master, nodes: [wind, wlfo], timers };
+      // Town music: switch to the folk tavern track while in town (if music on)
+      try {
+        if (this.prefs.music && TRACKS['ember-tavern']) {
+          this._preTownTrack = this._musicTrackId || this.prefs.track;
+          this._switchTrack('ember-tavern');
+        }
+      } catch { /* ignore */ }
+    } catch { /* never break the game over ambience */ }
+  },
+
   startInnAmbience() {
     try {
       if (!this.prefs.sfx) return;
