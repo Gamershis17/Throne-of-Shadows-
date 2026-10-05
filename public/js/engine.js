@@ -1913,9 +1913,9 @@ export function computeStats(state) {
   const dmgUpMult = Math.pow(1.12, Math.max(0, up.weapon - 1)) *
                     Math.pow(1.12, Math.max(0, up.skill - 1));
   const defUpMult = Math.pow(1.12, Math.max(0, up.armor - 1));
-  // Pet bond: flat bonuses from the ACTIVE pet, added AFTER all multiplicative
-  // bonuses (predictable, no double-dipping). Hunger-gated; benched pets give nothing.
-  const bond = petBond(state);
+  // WoW-style: pets are separate fighters, no stat sharing with player.
+  // Pet bond stat bonuses removed — pets deal their own damage in combat only.
+  const bond = { atk: 0, def: 0, hp: 0 }; // Bond disabled
   // Guild perks: multiplicative damage, additive XP/gold percentages.
   const gp = GUILD_PERKS;
   const guildDmgMult = 1 + (gp.dmgPct || 0) / 100;
@@ -1929,9 +1929,9 @@ export function computeStats(state) {
   // Balance v26: 2x global attack buff (2026-10-03).
   const BALANCE_ATK_MULT = 2;
   return {
-    attack: Math.max(1, (h.attack + gear.attack) * (race.atkMult || 1) * (cls.atkMult || 1) * (spec.atkMult || 1) * setMult * pAtkMult * tAtkMult * dmgUpMult * smithMult * guildDmgMult * (1 + (cte.atkPct || 0) / 100) * (1 + (cte.spellPowerPct || 0) / 100) * BALANCE_ATK_MULT + bond.atk),
-    defense: Math.max(0, (h.defense + gear.defense) * defUpMult * setMult * pDefMult * tDefMult * (cls.defMult || 1) * (spec.defMult || 1) * (1 + (cte.defPct || 0) / 100) + bond.def),
-    maxHp: Math.max(1, Math.round((h.maxHp + gear.maxHp) * (race.hpMult || 1) * (cls.hpMult || 1) * (spec.hpMult || 1) * setMult * pHpMult * tHpMult * (1 + (cte.maxHpPct || 0) / 100)) + bond.hp),
+    attack: Math.max(1, (h.attack + gear.attack) * (race.atkMult || 1) * (cls.atkMult || 1) * (spec.atkMult || 1) * setMult * pAtkMult * tAtkMult * dmgUpMult * smithMult * guildDmgMult * (1 + (cte.atkPct || 0) / 100) * (1 + (cte.spellPowerPct || 0) / 100) * BALANCE_ATK_MULT),
+    defense: Math.max(0, (h.defense + gear.defense) * defUpMult * setMult * pDefMult * tDefMult * (cls.defMult || 1) * (spec.defMult || 1) * (1 + (cte.defPct || 0) / 100)),
+    maxHp: Math.max(1, Math.round((h.maxHp + gear.maxHp) * (race.hpMult || 1) * (cls.hpMult || 1) * (spec.hpMult || 1) * setMult * pHpMult * tHpMult * (1 + (cte.maxHpPct || 0) / 100))),
     critChance: clamp(h.critChance + gear.critChance + pCritCh + (tb.critCh || 0) + (cte.critCh || 0) + (cls.critChBonus || 0) + (spec.critChBonus || 0), 0, 100),
     critDamage: Math.max(100, h.critDamage + gear.critDamage + pCritDmg + (cte.critDmgPct || 0) + (race.critDmgBonus || 0) + (cls.critDmgBonus || 0)),
     parry: clamp(h.parry + gear.parry + (race.parryBonus || 0), 0, 60),

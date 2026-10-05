@@ -4973,7 +4973,7 @@ export const UI = {
     const dmgMult = (Engine.CLASSES[state.playerClass] || {}).petDmgMult || 1;
     return `<div class="pet-telemetry">
       <div class="pet-tstat"><span class="pet-tlabel">\u2694\uFE0F Strike</span><span class="pet-tval">${esc(formatNum(strike))}</span></div>
-      <div class="pet-tstat"><span class="pet-tlabel">\u{1F517} Bond</span><span class="pet-tval">+${esc(formatNum(bond.atk))} ATK &middot; +${esc(formatNum(bond.def))} DEF &middot; +${esc(formatNum(bond.hp))} HP</span></div>
+      <div class="pet-tstat"><span class="pet-tlabel">⚔️ Combat</span><span class="pet-tval">Fights alongside you</span></div>
       <div class="pet-tstat"><span class="pet-tlabel">\u{1F43E} Lineup</span><span class="pet-tval">${n}/${hunter ? 2 : 1}</span></div>
       ${hunter && dmgMult !== 1 ? `<div class="pet-tstat"><span class="pet-tlabel">\u{1F3F9} Hunter</span><span class="pet-tval">+${Math.round((dmgMult - 1) * 100)}% pet dmg</span></div>` : ''}
     </div>`;
@@ -5073,7 +5073,7 @@ export const UI = {
         ${badge}</div>
       <div class="pet-xstats">
         <span>\u{1F4CA} ${esc(formatNum(ps.atk))} ATK &middot; ${esc(formatNum(ps.def))} DEF &middot; ${esc(formatNum(ps.hp))} HP</span>
-        <span>\u{1F517} Bond ${active ? 'active' : '(applies when active)'}: +${esc(formatNum(pb.atk))} ATK / +${esc(formatNum(pb.def))} DEF / +${esc(formatNum(pb.hp))} HP</span>
+        <span>⚔️ Combat pet ${active ? '(active)' : '(benched)'} — deals damage in battle</span>
         <span>\u{1F356} ${hungerPct}% &mdash; ${hungerLabel}</span>
       </div>
       <div class="pet-hunger"><div class="bar hunger"><div class="fill" style="width:${hungerPct}%"></div></div></div>
