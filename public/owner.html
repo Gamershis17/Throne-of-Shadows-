@@ -518,6 +518,32 @@ body.owner-page {
           </div>
 
           <div class="panel-box">
+            <h2 class="panel-title">⚡ GM God Powers</h2>
+            <p class="muted">Target the username above. All actions are logged.</p>
+            <div class="grid-2">
+              <div class="sub-panel">
+                <h3 class="panel-subtitle">Divine Powers</h3>
+                <div class="button-stack">
+                  <button id="pow-godmode-btn" class="owner-btn gold">⚡ Toggle God Mode (Invincible)</button>
+                  <button id="pow-smite-btn" class="owner-btn danger">💀 Smite (Clear Target HP)</button>
+                  <button id="pow-gold10k-btn" class="owner-btn gold">💰 Grant 10k Gold</button>
+                </div>
+              </div>
+              <div class="sub-panel">
+                <h3 class="panel-subtitle">👑 GM Gear (Martin Fury Set)</h3>
+                <div class="button-stack">
+                  <button id="pow-gmgear-btn" class="owner-btn gold">👑 Grant Full GM Gear Set</button>
+                  <small class="muted">⚡ Martin Fury (99,999 ATK)<br>🛡️ Godplate (99,999 DEF/HP)<br>👁️ Eye of Providence</small>
+                </div>
+              </div>
+            </div>
+            <h3 class="panel-subtitle" style="margin-top:16px">📋 Action Log</h3>
+            <div id="gm-action-log" class="log-box" style="max-height:200px;overflow-y:auto"></div>
+            <button id="pow-log-refresh" class="owner-btn small">🔄 Refresh Log</button>
+            </div>
+          </div>
+
+          <div class="panel-box">
             <h2 class="panel-title">Buff Management</h2>
             <div class="form-group">
               <label class="owner-label">Check Player Buffs</label>

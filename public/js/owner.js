@@ -141,6 +141,58 @@
     setErr('powers-err', ok ? `✅ Cleared ${u}'s inventory` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
 
+  // GM God Powers: God Mode
+  bind('pow-godmode-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    const { ok, j } = await api('/api/gm/godmode', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('powers-err', ok ? `✅ Toggled God Mode for ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    refreshGMLog();
+  });
+
+  // GM God Powers: Smite (set HP to 1)
+  bind('pow-smite-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    if (!confirm(`Smite ${u}? (Set HP to 1)`)) return;
+    const { ok, j } = await api('/api/gm/smite', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('powers-err', ok ? `✅ Smote ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    refreshGMLog();
+  });
+
+  // GM God Powers: 10k Gold
+  bind('pow-gold10k-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    const { ok, j } = await api('/api/gm/grant', { method: 'POST', body: JSON.stringify({ username: u, kind: 'gold', amount: 10000 }) });
+    setErr('powers-err', ok ? `✅ Granted 10k gold to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    refreshGMLog();
+  });
+
+  // GM God Powers: GM Gear Set
+  bind('pow-gmgear-btn', async () => {
+    const u = getUser('pow-user');
+    if (!u) { setErr('powers-err', '❌ Enter username.'); return; }
+    const { ok, j } = await api('/api/gm/grant-gm-gear', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('powers-err', ok ? `✅ Granted GM Gear Set to ${u}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+    refreshGMLog();
+  });
+
+  // GM Action Log
+  async function refreshGMLog() {
+    const { ok, j } = await api('/api/gm/audit');
+    const el = document.getElementById('gm-action-log');
+    if (!el) return;
+    if (ok && j.log) {
+      el.innerHTML = j.log.map(e =>
+        `<div>[${new Date(e.at).toLocaleString()}] <b>${e.by}</b>: ${e.action} — ${e.detail}</div>`
+      ).join('') || '<div class="muted">No actions yet</div>';
+    } else {
+      el.innerHTML = '<div class="muted">Failed to load log</div>';
+    }
+  }
+  bind('pow-log-refresh', refreshGMLog);
+
   // Stage Reset
   bind('reset-stages-btn', async () => {
     const confirmText = (($('reset-confirm') || {}).value || '').trim();

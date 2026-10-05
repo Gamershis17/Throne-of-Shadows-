@@ -1067,6 +1067,68 @@ router.post(
   })
 );
 
+// ---------- GM God Powers ----------
+
+router.post(
+  '/gm/godmode',
+  gmOrOwner,
+  asyncHandler(async (req, res) => {
+    const { username } = req.body || {};
+    const target = await resolveTarget(username);
+    if (!target) return res.status(404).json({ error: 'Target user not found.' });
+    const blob = await loadBlob(target.id);
+    blob.godmode = !blob.godmode;
+    await persistMergedState(target.id, blob);
+    pushStateUpdate(target.id, { godmode: blob.godmode });
+    await logAudit(req, 'godmode', target.username, blob.godmode ? 'ON' : 'OFF');
+    res.json({ ok: true, godmode: blob.godmode });
+  })
+);
+
+router.post(
+  '/gm/smite',
+  gmOrOwner,
+  asyncHandler(async (req, res) => {
+    const { username } = req.body || {};
+    const target = await resolveTarget(username);
+    if (!target) return res.status(404).json({ error: 'Target user not found.' });
+    const blob = await loadBlob(target.id);
+    if (blob.hero && typeof blob.hero === 'object') {
+      blob.hero.hp = 1;
+    }
+    await persistMergedState(target.id, blob);
+    pushStateUpdate(target.id, { hero: blob.hero });
+    await logAudit(req, 'smite', target.username, 'HP set to 1');
+    res.json({ ok: true });
+  })
+);
+
+router.post(
+  '/gm/grant-gm-gear',
+  gmOrOwner,
+  asyncHandler(async (req, res) => {
+    const { username } = req.body || {};
+    const target = await resolveTarget(username);
+    if (!target) return res.status(404).json({ error: 'Target user not found.' });
+    const blob = await loadBlob(target.id);
+    const gmGear = [
+      { id: 'gm-martin-fury', name: '⚡ Martin Fury', slot: 'weapon', rarity: 'GM', atk: 99999, def: 0, hp: 0 },
+      { id: 'gm-godplate', name: '🛡️ Godplate of the Admin', slot: 'armor', rarity: 'GM', atk: 0, def: 99999, hp: 99999 },
+      { id: 'gm-eye', name: '👁️ Eye of Providence', slot: 'trinket', rarity: 'GM', atk: 9999, def: 9999, hp: 99999 },
+    ];
+    blob.inventory = blob.inventory || [];
+    for (const item of gmGear) {
+      if (!blob.inventory.some(i => i.id === item.id)) {
+        blob.inventory.push({ ...item });
+      }
+    }
+    await persistMergedState(target.id, blob);
+    pushStateUpdate(target.id, { inventory: blob.inventory });
+    await logAudit(req, 'grant-gm-gear', target.username, 'Martin Fury set');
+    res.json({ ok: true });
+  })
+);
+
 // ---------- reset progress ----------
 // Writes a fresh default blob (same shape as a new registration via
 // defaultStateBlob()). Identity (username, role) lives in the users table
