@@ -319,6 +319,11 @@ export const UI = {
       if (window.__PREVIEW) {
         const autoToggle = document.querySelector('.autosell-toggle');
         if (autoToggle) autoToggle.style.display = 'none';
+        // Immersion settings card removed (atmosphere, weather sync, gfx quality)
+        document.querySelectorAll('#tab-settings .card').forEach(card => {
+          const h = card.querySelector('h3');
+          if (h && h.textContent.includes('Immersion')) card.style.display = 'none';
+        });
       }
     } catch { /* never break boot */ }
     // Oct 10 batch (preview): Town tab button. renderTown() already exists;
@@ -6194,7 +6199,7 @@ export const UI = {
     // Safety: guard against missing element (stale HTML after deploy).
     const pcEl = this.els['profile-card'];
     if (pcEl) pcEl.innerHTML = `
-      ${this.professionsCard(state)}
+      ${window.__PREVIEW ? '' : this.professionsCard(state)}
       ${this.achievementsCard(state)}`;
     this.checkChangelogBadge();
     this.checkBalanceBadge();
