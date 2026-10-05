@@ -1,5 +1,5 @@
 // ============================================================
-// ui.js?v=20261005pw — all DOM rendering for Throne of Shadows.
+// ui.js?v=20261005py — all DOM rendering for Throne of Shadows.
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
@@ -294,12 +294,11 @@ export const UI = {
           const st = document.createElement('style');
           st.id = 'preview-bag-css';
           st.textContent = [
-            '.bag-card{margin:0 0 12px;background:rgba(255,255,255,.04);border:1px solid #444;border-radius:10px;padding:10px}',
-            '.bag-header{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px}',
-            '.bag-emoji{font-size:1.1rem}',
-            '.bag-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}',
-            '.bag-item{background:rgba(0,0,0,.35);border:1px solid #444;border-radius:8px;padding:8px;text-align:center}',
-            '.bag-item-name{font-size:.72rem;word-break:break-word}'
+            '.bag-head{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:10px;font-size:1.05rem}',
+            '.bag-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}',
+            '.bag-slot{position:relative;aspect-ratio:1/1;background:linear-gradient(145deg,#1a1a22,#0d0d12);border:1px solid #3a3a48;border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}',
+            '.bag-slot-emoji{font-size:1.5rem;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}',
+            '.bag-slot-count{position:absolute;right:4px;bottom:2px;font-size:.72rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}',
           ].join('');
           document.head.appendChild(st);
         }
@@ -1147,7 +1146,7 @@ export const UI = {
 
   // Preview-only render for the Raids tab. Called from app.js?v=20261005pv onTabSwitch
   // under window.__PREVIEW; `Raid` is passed in by app.js?v=20261005pv (which already
-  // imports raid.js?v=20261005pv), so ui.js?v=20261005pw gains no new import. Info display only —
+  // imports raid.js?v=20261005pv), so ui.js?v=20261005py gains no new import. Info display only —
   // no raid mechanics. Gated on player level >= Engine.MAX_LEVEL (120).
   renderRaidsPreview(s, Raid) {
     try {
@@ -2368,7 +2367,8 @@ export const UI = {
     const sbBtn = document.getElementById('spellbook-open');
     if (sbBtn) sbBtn.classList.toggle('hidden', !Engine.hasSpellbook(state.playerClass));
     const showRebirth = state.level >= Engine.MAX_LEVEL;
-    this.els['rebirth-box'].classList.toggle('hidden', !showRebirth);
+    // Oct 10 batch (preview): Rebirth removed — never show the box.
+    this.els['rebirth-box'].classList.toggle('hidden', !showRebirth || window.__PREVIEW);
     if (showRebirth) {
       const nextMult = Engine.rebirthXpMult ? Engine.rebirthXpMult((state.rebirthCount || 0) + 1) : 1;
       // Safety: guard against missing element (stale HTML after deploy).
@@ -4118,42 +4118,34 @@ export const UI = {
   renderBag(state) {
     const list = document.getElementById('bag-list');
     if (!list) return;
-    
-    // Show inventory items categorized
-    const inv = state.inventory || [];
-    const cats = { general: [], herbs: [], ores: [], enchanting: [], engineering: [], alchemy: [], quest: [] };
-    
-    for (const item of inv) {
-      // Categorize by item type/name
-      const name = (item.name || '').toLowerCase();
-      let cat = 'general';
-      if (name.includes('herb') || name.includes('leaf') || name.includes('flower')) cat = 'herbs';
-      else if (name.includes('ore') || name.includes('stone') || name.includes('gem')) cat = 'ores';
-      else if (name.includes('dust') || name.includes('essence') || name.includes('shard')) cat = 'enchanting';
-      else if (name.includes('bolt') || name.includes('gear') || name.includes('part')) cat = 'engineering';
-      else if (name.includes('potion') || name.includes('elixir') || name.includes('flask')) cat = 'alchemy';
-      else if (item.quest) cat = 'quest';
-      cats[cat].push(item);
-    }
-    
-    let html = '';
-    for (const [catKey, items] of Object.entries(cats)) {
-      if (items.length === 0) continue;
-      const catInfo = (Engine.BAG_CATEGORIES && Engine.BAG_CATEGORIES[catKey]) || { name: catKey, emoji: '🎒' };
-      html += `<div class="bag-card">
-        <div class="bag-header">
-          <span class="bag-emoji">${catInfo.emoji}</span>
-          <span>${catInfo.name}</span>
-          <span class="bag-slots muted small">${items.length} items</span>
-        </div>
-        <div class="bag-items">`;
-      for (const item of items) {
-        html += `<div class="bag-item"><div class="bag-item-name">${this.esc(item.name || item.id)}</div></div>`;
+    // Oct 10 batch: WoW-style bag slots. Ore loot lives in state.mine.ores
+    // as counters; render each as 99x-capped stacks, one slot per stack.
+    const ores = (state.mine && state.mine.ores) || {};
+    const STACK = 99;
+    let slotsHtml = '';
+    let totalSlots = 0;
+    let totalItems = 0;
+    for (const tier of (Engine.ORE_TIERS || [])) {
+      const count = Math.floor(ores[tier.id] || 0);
+      if (count <= 0) continue;
+      totalItems += count;
+      let remaining = count;
+      while (remaining > 0) {
+        const inSlot = Math.min(STACK, remaining);
+        totalSlots++;
+        slotsHtml += `<div class="bag-slot" title="${this.esc(tier.name)} × ${inSlot}">` +
+          `<span class="bag-slot-emoji">${tier.emoji}</span>` +
+          (inSlot > 1 ? `<span class="bag-slot-count">${inSlot}</span>` : '') +
+          `</div>`;
+        remaining -= inSlot;
       }
-      html += `</div></div>`;
     }
-    
-    list.innerHTML = html || '<p class="muted">Your bags are empty. Go loot something!</p>';
+    const head = `<div class="bag-head"><span>🎒 Bag</span>` +
+      `<span class="muted small">${totalSlots} slots · ${totalItems} ore</span></div>`;
+    list.innerHTML = head +
+      (slotsHtml
+        ? `<div class="bag-slots">${slotsHtml}</div>`
+        : '<p class="muted">Your bags are empty. Go mine some ore!</p>');
   },
 
   renderTown(state) {
