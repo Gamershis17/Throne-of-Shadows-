@@ -1,8 +1,8 @@
 // ============================================================
-// gm.js — GM console UI. Only opened for staff roles.
+// gm.js?v=20261005pv — GM console UI. Only opened for staff roles.
 // ============================================================
-import { api } from './api.js?v=20260930ar';
-import { UI, esc, formatNum } from './ui.js?v=20261001e';
+import { api } from './api.js?v=20261005pv';
+import { UI, esc, formatNum } from './ui.js?v=20261005pv';
 import { PRIVILEGED_SETS, TITLES, BADGES, CLASSES, SPECS } from './engine.js?v20261003x';
 
 const SET_IDS = Object.keys(PRIVILEGED_SETS);
@@ -220,7 +220,7 @@ export const GM = {
     const gmTarget = root.querySelector('.gm-target');
     const hdrH = gmHeader ? gmHeader.offsetHeight : 0;
     // Dynamic offsets travel as CSS custom properties; style.css owns how
-    // they're applied (same pattern as the toast/tooltip vars in ui.js).
+    // they're applied (same pattern as the toast/tooltip vars in ui.js?v=20261005pv).
     if (gmTarget && hdrH) gmTarget.style.setProperty('--gm-target-top', hdrH + 'px');
     const jumpOffset = hdrH + (gmTarget ? gmTarget.offsetHeight : 0) + 12;
     root.querySelectorAll('[id^="gm-sec-"]').forEach((sec) => {
@@ -340,7 +340,8 @@ export const GM = {
       const presIcon = pres.online ? '🟢' : '🔴';
       const presText = pres.online ? 'Online' : 'Offline';
       const lastSeen = pres.lastSeen ? new Date(pres.lastSeen).toLocaleString() : 'never';
-      const isOwner = GM.me && GM.me.role === 'owner';
+      // Oct10 preview: console is view-only — owner mod/remove-pet buttons stripped.
+      const isOwner = !window.__PREVIEW && GM.me && GM.me.role === 'owner';
       // Equipped gear inspector (owner-only mod buttons)
       const gearRows = Object.entries(d.equippedGear || {}).map(([slot, item]) => {
         if (!item) return `<div class="gm-dossier-row"><span class="muted">${esc(slot)}</span><b>— empty —</b></div>`;
@@ -1001,14 +1002,18 @@ export const GM = {
       const count = $('gm-inv-count');
       if (count) count.textContent = items.length ? `${items.length} item${items.length === 1 ? '' : 's'}` : '';
       if (!items.length) { list.innerHTML = '<p class="muted small">Inventory is empty.</p>'; return; }
-      list.innerHTML = items.map(it => `
-        <div class="name-row" data-index="${it.index}">
-          <span>${esc(it.name)} <span class="muted small">[${esc(it.slot)}]${it.enchant ? ' +' + it.enchant : ''}</span></span>
+      // Oct10 preview: inventory is browse-only; enchant + remove controls stripped.
+      const PV = window.__PREVIEW === true;
+      const rowControls = (it) => PV ? '' : `
           <span class="row" style="gap:0.3rem">
             <input type="number" min="0" max="10" value="${it.enchant}" data-ench-input style="width:3.2rem" title="Enchant 0–10">
             <button class="btn small ghost" data-ench-set>✨</button>
             <button class="btn small ghost danger" data-item-remove title="Remove item">✖</button>
-          </span>
+          </span>`;
+      list.innerHTML = items.map(it => `
+        <div class="name-row" data-index="${it.index}">
+          <span>${esc(it.name)} <span class="muted small">[${esc(it.slot)}]${it.enchant ? ' +' + it.enchant : ''}</span></span>
+          ${rowControls(it)}
         </div>`).join('');
     };
     const loadInventory = async () => {
@@ -1147,6 +1152,8 @@ export const GM = {
   },
 
   template(ov) {
+    // Oct10 batch (gmconsole): preview strips destructive/grant powers.
+    const PV = window.__PREVIEW === true;
     const role = this.me.role;
     const isOwner = role === 'owner';
     const gm = canGm(role);
@@ -1177,7 +1184,7 @@ export const GM = {
         <div class="gm-cc-tabs">
           <button class="gm-cc-tab active" data-cc="roster">👥 Roster</button>
           <button class="gm-cc-tab" data-cc="live">👁️ Live View</button>
-          <button class="gm-cc-tab" data-cc="opgear">⚔️ OP Gear</button>
+          ${PV ? '' : `<button class="gm-cc-tab" data-cc="opgear">⚔️ OP Gear</button>`}
         </div>
 
         <div class="gm-cc-pane" id="gm-cc-roster">
@@ -1190,6 +1197,7 @@ export const GM = {
           <div id="gm-live-list"><p class="muted">Loading…</p></div>
         </div>
 
+${PV ? '' : `
         <div class="gm-cc-pane hidden" id="gm-cc-opgear">
           <div class="muted small" style="margin-bottom:8px">Forge overpowered gear for admins. No stat limits.</div>
           <div class="gm-opgear-form">
@@ -1221,6 +1229,7 @@ export const GM = {
             <div id="opgear-result" class="muted small" style="margin-top:6px"></div>
           </div>
         </div>
+        `}
       </div>
       ` : ``}
 
@@ -1229,11 +1238,13 @@ export const GM = {
         <div id="gm-idref-panel" class="hidden" style="margin-top:8px"></div>
       </div>
 
+${PV ? '' : `
       <div class="card" style="margin-bottom:12px">
         <h4 style="margin:0 0 8px">⚡ Event Multipliers</h4>
         <button id="gm-toggle-2x" class="btn small" style="width:100%">⚡ TOGGLE 2X EVENT</button>
         <div class="muted small" style="margin-top:4px">Toggles 2x XP and 2x Gold for your session.</div>
       </div>
+      `}
 
       ${canTarget ? `
       <div class="card gm-target" style="position:sticky;top:0;z-index:5">
@@ -1248,15 +1259,15 @@ export const GM = {
         <div id="gm-dossier" class="gm-dossier hidden"></div>
         <div class="gm-jump">
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-audit">📜 Audit</button>' : ''}
-        ${gm ? '<button class="btn small ghost" data-goto="gm-sec-event">🎉 Event</button>' : ''}
+        ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-event">🎉 Event</button>' : ''}
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-grants">🎁 Grants</button>' : ''}
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-inventory">🎒 Inventory</button>' : ''}
-        ${gm ? '<button class="btn small ghost" data-goto="gm-sec-values">🎚️ Values</button>' : ''}
+        ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-values">🎚️ Values</button>' : ''}
         ${'<button class="btn small ghost" data-goto="gm-sec-player">🛠️ Player</button>'}
-        ${gm ? '<button class="btn small ghost" data-goto="gm-sec-codes">🎟️ Codes</button>' : ''}
+        ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-codes">🎟️ Codes</button>' : ''}
         ${(mod || gm) ? '<button class="btn small ghost" data-goto="gm-sec-mod">📣 Mod</button>' : ''}
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-staff">👥 Staff</button>' : ''}
-        ${isOwner ? '<button class="btn small ghost" data-goto="gm-sec-server">⚙️ Server</button>' : ''}
+        ${(!PV && isOwner) ? '<button class="btn small ghost" data-goto="gm-sec-server">⚙️ Server</button>' : ''}
         </div>
       </div>
 
@@ -1275,7 +1286,7 @@ export const GM = {
       </div>
       ` : ''}
 
-      ${gm ? `
+      ${(!PV && gm) ? `
       <div class="card" id="gm-sec-event"><h3>🎉 Server event buff</h3>
         <p class="muted small">Server-wide XP/gold multiplier — e.g. a double-XP weekend. Players see it when they log in.</p>
         <div class="row">
@@ -1297,6 +1308,7 @@ export const GM = {
 
       ${gm ? `
       <div class="card" id="gm-sec-grants"><h3>🎁 Grants</h3>
+${PV ? '' : `
         <h4 class="gm-sub">Currency &amp; gear</h4>
         <div class="row">
           <label class="fld"><span>Kind</span>
@@ -1338,6 +1350,8 @@ export const GM = {
         </div>
         <button id="gm-grant-btn" class="btn gold wide">Grant</button>
         <p class="muted small">Gear grants add the full 5-piece set to the player's inventory. Sovereign set is owner-only.</p>
+        `}
+${PV ? '' : `
         <h4 class="gm-sub">Titles, badges &amp; pets</h4>
         <div class="row">
           <label class="fld"><span>Title</span><select id="gm-grant-title">${titleOptions}</select></label>
@@ -1356,6 +1370,7 @@ export const GM = {
             <input id="gm-grant-pet-amount" type="number" min="1" max="99" value="1"></label>
           <button id="gm-grant-pet-btn" class="btn small" style="align-self:flex-end">🐾 Grant eggs</button>
         </div>
+        `}
         <div class="row">
           <label class="fld"><span>Single item — set</span><select id="gm-grant-item-set">${setOptions}</select></label>
           <label class="fld"><span>Piece</span>
@@ -1368,6 +1383,7 @@ export const GM = {
             </select></label>
           <button id="gm-grant-item-btn" class="btn small" style="align-self:flex-end">🎁 Grant item</button>
         </div>
+${PV ? '' : `
         <div class="row">
           <label class="fld"><span>Class gear — piece</span>
             <select id="gm-grant-class-slot">
@@ -1399,17 +1415,19 @@ export const GM = {
             </select></label>
           <button id="gm-name-style-btn" class="btn small" style="align-self:flex-end">🎨 Set style</button>
         </div>
+        `}
       </div>
       ` : ''}
 
       ${gm ? `
       <div class="card" id="gm-sec-inventory"><h3>🎒 Target inventory</h3>
-        <p class="muted small">Browse the target's full inventory, set enchant levels, or remove items.</p>
+        ${PV ? '<p class="muted small">Browse the target\'s full inventory.</p>' : '<p class="muted small">Browse the target\'s full inventory, set enchant levels, or remove items.</p>'}
         <div class="row">
           <button id="gm-inv-load" class="btn small">🔄 Load inventory</button>
           <span class="muted small" id="gm-inv-count"></span>
         </div>
         <div id="gm-inv-list" class="name-list"></div>
+${PV ? '<p class="muted small">Enchant and item removal are disabled in this preview.</p>' : `
         <h4 class="gm-sub">Set enchant (equipped item)</h4>
         <div class="row">
           <label class="fld"><span>Equipped slot</span>
@@ -1425,10 +1443,11 @@ export const GM = {
           <button id="gm-enchant-btn" class="btn small" style="align-self:flex-end">✨ Set enchant</button>
           <button id="gm-enchant-all-btn" class="btn small" style="align-self:flex-end">✨ Enchant all +10</button>
         </div>
+        `}
       </div>
       ` : ''}
 
-      ${gm ? `
+      ${(!PV && gm) ? `
       <div class="card" id="gm-sec-values"><h3>🎚️ Set values</h3>
         <p class="muted small">Set a value directly on the target player (not added — replaced).</p>
         <div class="row">
@@ -1453,6 +1472,7 @@ export const GM = {
 
       ${(gm || admin) ? `
       <div class="card" id="gm-sec-player"><h3>🛠️ Player</h3>
+${PV ? '' : `
         <div class="row">
           <label class="fld"><span>Set stage (1–10000)</span>
             <input id="gm-player-stage" type="number" min="1" max="10000" value="1"></label>
@@ -1461,13 +1481,16 @@ export const GM = {
           <label class="fld"><span>Title</span><select id="gm-player-title">${titleOptions}</select></label>
           <button id="gm-player-title-btn" class="btn small" style="align-self:flex-end">👑 Grant title</button>` : ''}
         </div>
+        `}
         <div class="row" style="margin-top:0.6rem">
           ${gm ? `<button id="gm-player-heal-btn" class="btn small">💚 Heal</button>` : ''}
+          ${PV ? '' : `
           <button id="gm-player-ban-btn" class="btn small danger">🔨 Ban</button>
           <button id="gm-player-unban-btn" class="btn small">🔓 Unban</button>
           <button id="gm-player-kick-btn" class="btn small danger">👢 Kick</button>
           <button id="gm-player-reset-btn" class="btn small danger">♻️ Reset player</button>
           ${isOwner ? `<button id="gm-player-delete-btn" class="btn small danger">🗑️ Delete account</button>` : ''}
+          `}
         </div>
         <div class="row" style="margin-top:0.6rem">
           <label class="fld"><span>Mute guild chat (minutes, 0 = unmute)</span>
@@ -1475,10 +1498,13 @@ export const GM = {
           <button id="gm-player-mute-btn" class="btn small" style="align-self:flex-end">🔇 Mute</button>
           <button id="gm-player-unmute-btn" class="btn small" style="align-self:flex-end">🔈 Unmute</button>
         </div>
+${PV ? '' : `
         <div class="row" style="margin-top:0.6rem">
           <span class="muted small" style="align-self:center;flex:1;min-width:220px">🧹 Wipe the message history of the target's guild. The guild itself is untouched — for spam raids.</span>
           <button id="gm-clear-chat-btn" class="btn small danger" style="align-self:flex-end">🧹 Clear guild chat</button>
         </div>
+        `}
+${PV ? '' : `
         <div class="row" style="margin-top:0.6rem">
           <label class="fld"><span>Reset quests</span>
             <select id="gm-quest-period">
@@ -1488,11 +1514,12 @@ export const GM = {
             </select></label>
           <button id="gm-quest-reset-btn" class="btn small" style="align-self:flex-end">🔁 Re-roll quests</button>
         </div>
-        <p class="muted small">Banned players cannot log in. Kick force-logs them out immediately (they may sign back in). Mute blocks guild chat until it expires. Reset wipes progress back to a fresh hero (keeps account &amp; role). Quest re-roll unsticks broken daily/weekly sets.</p>
+        `}
+        ${PV ? '<p class="muted small">Heal restores the target to full HP. Mute blocks guild chat until it expires. Other powers moved to the Owner panel.</p>' : '<p class="muted small">Banned players cannot log in. Kick force-logs them out immediately (they may sign back in). Mute blocks guild chat until it expires. Reset wipes progress back to a fresh hero (keeps account &amp; role). Quest re-roll unsticks broken daily/weekly sets.</p>'}
       </div>
       ` : ''}
 
-      ${gm ? `
+      ${(!PV && gm) ? `
       <div class="card" id="gm-sec-codes"><h3>🎟️ Gift codes</h3>
         <div class="row">
           <label class="fld"><span>Reward</span>
@@ -1553,7 +1580,7 @@ export const GM = {
       </div>
       ` : ''}
 
-      ${isOwner ? `
+      ${(!PV && isOwner) ? `
       <div class="card" id="gm-sec-server"><h3>⚙️ Server <span class="muted small">(owner only)</span></h3>
         <h4 class="gm-sub">Maintenance mode</h4>
         <div class="row">
@@ -1582,6 +1609,7 @@ export const GM = {
 
   async refreshCodes(root) {
     const list = root.querySelector('#gm-code-list');
+    if (!list) return; // Oct10 preview: gift codes section is stripped
     try {
       const codes = await api.gmCodes();
       const arr = Array.isArray(codes) ? codes : (codes.codes || []);
