@@ -1788,6 +1788,16 @@ async function addWorldChat(username, message, isGm = false) {
       is_gm BOOLEAN DEFAULT FALSE
     )`);
     await pool.query(`ALTER TABLE world_chat ADD COLUMN IF NOT EXISTS is_gm BOOLEAN DEFAULT FALSE`);
+    // Fix created_at type if it's bigint instead of timestamptz (prod schema drift)
+    try {
+      const { rows: colRows } = await pool.query(
+        `SELECT data_type FROM information_schema.columns WHERE table_name = 'world_chat' AND column_name = 'created_at'`
+      );
+      if (colRows[0] && colRows[0].data_type === 'bigint') {
+        await pool.query(`ALTER TABLE world_chat ALTER COLUMN created_at TYPE TIMESTAMPTZ USING to_timestamp(created_at/1000.0)`);
+        await pool.query(`ALTER TABLE world_chat ALTER COLUMN created_at SET DEFAULT NOW()`);
+      }
+    } catch { /* best-effort */ }
   } catch { /* best-effort */ }
   const { rows } = await pool.query(
     'INSERT INTO world_chat (username, message, created_at, is_gm) VALUES ($1, $2, NOW(), $3) RETURNING id, created_at',
