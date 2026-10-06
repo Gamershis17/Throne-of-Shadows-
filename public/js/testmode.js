@@ -26,12 +26,13 @@ export const TEST_KEY = 'tos_test_state';
 const TEST_PREFIX = 'tos_test_';
 
 let _active = null;
-// Active ONLY when BOTH flags are present. Lazy + cached: module eval
-// order relative to the classic __PREVIEW script can never matter.
+// Active ONLY when BOTH flags are present (?test=1&preview=1). Uses __TESTLAB
+// so test mode stays a lab-only dev tool now that __PREVIEW is always true.
+// Lazy + cached: module eval order relative to the classic script can never matter.
 export function isTestMode() {
   if (_active !== null) return _active;
   try {
-    _active = !!window.__PREVIEW &&
+    _active = !!window.__TESTLAB &&
       new URLSearchParams(window.location.search).get('test') === '1';
   } catch {
     _active = false;
