@@ -511,24 +511,63 @@
   // ===== Mail & Tickets =====
   const $m = (id) => document.getElementById(id);
 
+  // Item picker: add selected item with stats to the textarea
+  // Format: "Name x Qty [attack:500, defense:100]"
+  bind('mail-item-add-btn', () => {
+    const picker = $m('mail-item-picker');
+    const ta = $m('mail-items');
+    if (!picker || !ta || !picker.value) return;
+    // Collect stats from inputs
+    const statKeys = ['attack', 'defense', 'maxHp', 'critChance', 'critDamage', 'lifesteal'];
+    const stats = {};
+    for (const k of statKeys) {
+      const el = $m('mail-stat-' + k);
+      const v = el ? Number(el.value) : 0;
+      if (v > 0) stats[k] = v;
+    }
+    let line = picker.value;
+    if (Object.keys(stats).length) {
+      line += ' [' + Object.entries(stats).map(([k, v]) => k + ':' + v).join(', ') + ']';
+    }
+    const cur = ta.value.trim();
+    ta.value = cur ? cur + '\n' + line : line;
+    picker.value = '';
+    // Clear stat inputs
+    for (const k of statKeys) { const el = $m('mail-stat-' + k); if (el) el.value = ''; }
+  });
+
   // Send mail
   bind('mail-send-btn', async () => {
     const to = ($m('mail-to').value || '').trim();
     const subject = ($m('mail-subject').value || '').trim();
     const body = ($m('mail-body').value || '').trim();
     const gold = Math.max(0, Math.floor(Number($m('mail-gold').value) || 0));
-    // Parse items: "Name x Qty" per line
+    // Parse items: "Name x Qty [stat:val, ...]" per line
     const itemsText = ($m('mail-items').value || '').trim();
     const items = [];
+    const VALID_STATS = ['attack', 'defense', 'maxHp', 'critChance', 'critDamage', 'parry', 'dodge', 'lifesteal', 'attackSpeed', 'regen', 'goldBonus', 'xpBonus'];
     if (itemsText) {
       itemsText.split('\n').forEach(line => {
         line = line.trim();
         if (!line) return;
+        // Extract [stats] block if present
+        let stats = {};
+        const statMatch = line.match(/\[([^\]]+)\]\s*$/);
+        if (statMatch) {
+          statMatch[1].split(',').forEach(pair => {
+            const [k, v] = pair.split(':').map(s => s.trim());
+            if (k && v && VALID_STATS.includes(k)) {
+              const num = Number(v);
+              if (Number.isFinite(num) && num > 0) stats[k] = num;
+            }
+          });
+          line = line.slice(0, statMatch.index).trim();
+        }
         const match = line.match(/^(.+?)\s*[x×]\s*(\d+)$/i);
         if (match) {
-          items.push({ name: match[1].trim(), qty: Math.max(1, parseInt(match[2])) });
+          items.push({ name: match[1].trim(), qty: Math.max(1, parseInt(match[2])), stats });
         } else {
-          items.push({ name: line, qty: 1 });
+          items.push({ name: line, qty: 1, stats });
         }
       });
     }
