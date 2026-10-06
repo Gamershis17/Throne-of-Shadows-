@@ -2605,10 +2605,14 @@ export const UI = {
             const un = unlocked.has(d.id);
             const inSlot = slots.includes(d.id);
             const sIcon = d.icon ? `<img src="${d.icon}" class="sk-icon" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"><span class="sk-emoji" style="display:none">${d.emoji}</span>` : `<span class="sk-emoji">${d.emoji}</span>`;
+            // Show cost, gain, or free (e.g., "+15 Focus" for generators like Steady Shot)
+            const costText = !un ? `\u{1F512} Lv ${d.unlockLevel}`
+              : d.cost ? `${rdef.emoji} ${d.cost}`
+              : d.gain ? `${rdef.emoji} +${d.gain}` : 'free';
             return `<button class="sb-wow-spell${!un ? ' locked' : ''}${selSpell === d.id ? ' sel' : ''}" data-spell="${d.id}"${!un ? ' disabled' : ''}>` +
               sIcon +
               `<span class="sk-info"><span class="sk-name">${esc(d.name)}${inSlot ? ' \u2713' : ''}</span>` +
-              `<span class="sk-sub">${un ? (d.cost ? `${rdef.emoji} ${d.cost}` : 'free') : `\u{1F512} Lv ${d.unlockLevel}`}</span></span>` +
+              `<span class="sk-sub">${costText}</span></span>` +
               `</button>`;
           }).join('');
         if (!cards) return '';
@@ -2631,8 +2635,8 @@ export const UI = {
         <h3>${esc(d.name)}</h3>
         <div class="dt-meta">
           <span class="dt-tag">${esc(d.school || '')}</span>
-          ${d.cost ? `<span class="dt-tag">${rdef.emoji} ${d.cost} ${rdef.name}</span>` : '<span class="dt-tag">free</span>'}
-          ${d.cooldown ? `<span class="dt-tag">\u23F1 ${d.cooldown}s</span>` : ''}
+          ${d.cost ? `<span class="dt-tag">${rdef.emoji} ${d.cost} ${rdef.name}</span>` : d.gain ? `<span class="dt-tag">${rdef.emoji} +${d.gain} ${rdef.name}</span>` : '<span class="dt-tag">free</span>'}
+          ${(d.cooldown || d.cdMs) ? `<span class="dt-tag">\u23F1 ${(d.cooldown || d.cdMs / 1000)}s</span>` : ''}
           ${un ? '' : `<span class="dt-tag">\u{1F512} Lv ${d.unlockLevel}</span>`}
         </div>
         <div class="dt-desc">${esc(d.desc)}</div>
@@ -4607,6 +4611,17 @@ export const UI = {
         autoChk._wired = true;
         autoChk.addEventListener('change', () => {
           if (this.handlers.onToggleAutoSell) this.handlers.onToggleAutoSell(autoChk.checked);
+        });
+      }
+    }
+    // Manual loot pickup toggle
+    const manualChk = this.els['manualloot-checkbox'];
+    if (manualChk) {
+      manualChk.checked = !!(state.settings && state.settings.manualLoot);
+      if (!manualChk._wired) {
+        manualChk._wired = true;
+        manualChk.addEventListener('change', () => {
+          if (this.handlers.onToggleManualLoot) this.handlers.onToggleManualLoot(manualChk.checked);
         });
       }
     }
@@ -6931,28 +6946,5 @@ export const UI = {
       <div class="talent-tree">${rowsHtml}</div>
       <p class="muted small">Earn 1 point per 5 levels from level 10, +1 at 25 / 50 / 75 / 100. Points persist through rebirth.</p>
     </div>`;
-  },
-  // Oct 10 ship countdown banner
-  startShipCountdown() {
-    const el = document.getElementById('ship-countdown');
-    if (!el) return;
-    const update = () => {
-      el.textContent = this.renderShipCountdown();
-      el.style.display = 'block';
-    };
-    update();
-    setInterval(update, 1000);
-  },
-
-  renderShipCountdown() {
-    const target = new Date('2026-10-10T00:00:00Z').getTime();
-    const now = Date.now();
-    const diff = target - now;
-    if (diff <= 0) return '🚀 SHIP DAY! The update is here!';
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    return `🚀 Big Update in ${d}d ${h}h ${m}m ${s}s`;
   },
 };

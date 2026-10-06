@@ -2178,7 +2178,8 @@ export function makeLootItem(stage, rarityId, slot, classId) {
 // stage-gated via maxRarityIdxForStage().
 export function rollLoot(stage, isBoss = false, minIdx = null, opts = {}) {
   const bonus = Math.max(0, Number(opts.bonusChance) || 0);
-  const baseChance = opts.guaranteed ? 1 : (isBoss ? 0.80 : 0.10 + bonus / 100);
+  // Increased drop rates (2026-10-06): more loot while killing
+  const baseChance = opts.guaranteed ? 1 : (isBoss ? 0.90 : 0.25 + bonus / 100);
   if (Math.random() > baseChance) return null;
   const maxIdx = maxRarityIdxForStage(stage);
   const lo = Math.min(minIdx !== null ? minIdx : (isBoss ? 2 : 0), maxIdx);

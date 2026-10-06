@@ -213,6 +213,7 @@ async function boot() {
     onSell: doSell,
     onClearBags: doClearBags,
     onToggleAutoSell: doToggleAutoSell,
+    onToggleManualLoot: doToggleManualLoot,
     onMine: doMine,
     onFish: doFish,
     onBuyRod: doBuyRod,
@@ -1493,9 +1494,12 @@ function onKillEnemy() {
   const loot = Engine.rollLoot(stage, enemy.boss, raidLoot ? raidLoot.lootTier : null,
     { bonusChance: streakBonus, guaranteed: radiant, classId: s.playerClass });
   if (loot) {
-    // Auto-sell: convert loot straight to gold when the toggle is on.
-    // Set pieces and unsellables are always kept.
-    if (s.settings && s.settings.autoSell && !loot.set && !loot.unsellable) {
+    // Manual loot pickup: show as tappable drop instead of auto-adding to inventory
+    if (s.settings && s.settings.manualLoot && !loot.set && !loot.unsellable) {
+      addPendingLoot(loot, radiant ? '🌟 Radiant loot' : '🎒 Loot');
+    } else if (s.settings && s.settings.autoSell && !loot.set && !loot.unsellable) {
+      // Auto-sell: convert loot straight to gold when the toggle is on.
+      // Set pieces and unsellables are always kept.
       const gold = Math.max(1, Math.round(loot.value || 1));
       Engine.addGold(s, gold);
       UI.notify('loot', `💰 Auto-sold ${loot.name} (+${formatNum(gold)} gold)`, 'loot');
@@ -2272,6 +2276,70 @@ function doToggleAutoSell(on) {
   s.settings.autoSell = !!on;
   saveNow();
   UI.toast(on ? '💰 Auto-sell ON — loot converts to gold!' : '💰 Auto-sell OFF.', 'success');
+}
+
+function doToggleManualLoot(on) {
+  const s = App.state;
+  if (!s.settings) s.settings = {};
+  s.settings.manualLoot = !!on;
+  saveNow();
+  UI.toast(on ? '🎒 Manual loot ON — tap drops to pick them up!' : '🎒 Manual loot OFF — auto-loot restored.', 'success');
+}
+
+// ---------------- Manual Loot Pickup ----------------
+// Pending loot drops (manual mode): items on the ground waiting to be tapped.
+let pendingLoot = [];
+
+function addPendingLoot(loot, tag) {
+  const id = 'loot-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  pendingLoot.push({ id, loot, tag, expiresAt: Date.now() + 60000 });
+  UI.combatLog(`${tag} dropped: ${loot.name} (${loot.rarity}) — tap to pick up!`, 'loot');
+  renderPendingLoot();
+  // Auto-expire after 60s
+  setTimeout(() => {
+    const idx = pendingLoot.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      const expired = pendingLoot.splice(idx, 1)[0];
+      UI.combatLog(`⏳ ${expired.loot.name} faded away...`, 'loot');
+      renderPendingLoot();
+    }
+  }, 60000);
+}
+
+function collectPendingLoot(id) {
+  const idx = pendingLoot.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  const { loot, tag } = pendingLoot.splice(idx, 1)[0];
+  const s = App.state;
+  s.inventory.push(loot);
+  UI.notify('loot', `${tag}: ${loot.name} picked up!`, 'loot');
+  UI.combatLog(`✅ Picked up ${loot.name} (${loot.rarity})`, 'loot');
+  if (UI.activeTab === 'gear') UI.renderGear(s);
+  saveNow();
+  renderPendingLoot();
+}
+
+function renderPendingLoot() {
+  let bar = document.getElementById('pending-loot-bar');
+  if (!pendingLoot.length) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pending-loot-bar';
+    bar.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9999;background:rgba(0,0,0,0.8);padding:10px;border-radius:12px;border:1px solid #7c3aed;';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '';
+  pendingLoot.forEach(p => {
+    const el = document.createElement('button');
+    el.style.cssText = 'padding:10px 14px;border-radius:8px;border:1px solid #7c3aed;background:#1a1a2e;color:#e8dfd0;cursor:pointer;font-size:14px;';
+    el.textContent = `🎒 ${p.loot.name}`;
+    el.title = `${p.loot.name} (${p.loot.rarity}) — tap to pick up`;
+    el.addEventListener('click', () => collectPendingLoot(p.id));
+    bar.appendChild(el);
+  });
 }
 
 // ---------------- Mining & Forging ----------------
