@@ -1402,12 +1402,12 @@ const GUILD_VENDOR = [
 
 // ---------- GM tickets ----------
 async function createTicket(player, subject, message) {
-  const r = await query(
+  const r = await pool.query(
     `INSERT INTO tickets (player, subject) VALUES ($1, $2) RETURNING id`,
     [player, subject]
   );
   const ticketId = r.rows[0].id;
-  await query(
+  await pool.query(
     `INSERT INTO ticket_replies (ticket_id, author, message, is_gm) VALUES ($1, $2, $3, FALSE)`,
     [ticketId, player, message]
   );
@@ -1415,7 +1415,7 @@ async function createTicket(player, subject, message) {
 }
 
 async function getPlayerTickets(player) {
-  const r = await query(
+  const r = await pool.query(
     `SELECT t.*, (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
      FROM tickets t WHERE t.player = $1 ORDER BY t.updated_at DESC LIMIT 50`,
     [player]
@@ -1425,11 +1425,11 @@ async function getPlayerTickets(player) {
 
 async function getTicket(ticketId, player) {
   // Player can only see own tickets; GM check done at API layer
-  const r = await query(`SELECT * FROM tickets WHERE id = $1`, [ticketId]);
+  const r = await pool.query(`SELECT * FROM tickets WHERE id = $1`, [ticketId]);
   if (!r.rows.length) return null;
   const ticket = r.rows[0];
   if (player && ticket.player !== player) return null; // not theirs
-  const replies = await query(
+  const replies = await pool.query(
     `SELECT * FROM ticket_replies WHERE ticket_id = $1 ORDER BY created_at ASC`,
     [ticketId]
   );
@@ -1438,10 +1438,10 @@ async function getTicket(ticketId, player) {
 }
 
 async function getTicketForGM(ticketId) {
-  const r = await query(`SELECT * FROM tickets WHERE id = $1`, [ticketId]);
+  const r = await pool.query(`SELECT * FROM tickets WHERE id = $1`, [ticketId]);
   if (!r.rows.length) return null;
   const ticket = r.rows[0];
-  const replies = await query(
+  const replies = await pool.query(
     `SELECT * FROM ticket_replies WHERE ticket_id = $1 ORDER BY created_at ASC`,
     [ticketId]
   );
@@ -1450,18 +1450,18 @@ async function getTicketForGM(ticketId) {
 }
 
 async function addTicketReply(ticketId, author, message, isGm) {
-  await query(
+  await pool.query(
     `INSERT INTO ticket_replies (ticket_id, author, message, is_gm) VALUES ($1, $2, $3, $4)`,
     [ticketId, author, message, isGm]
   );
-  await query(
+  await pool.query(
     `UPDATE tickets SET updated_at = NOW(), status = CASE WHEN $2 THEN 'answered' ELSE 'open' END WHERE id = $1`,
     [ticketId, isGm]
   );
 }
 
 async function getOpenTickets() {
-  const r = await query(
+  const r = await pool.query(
     `SELECT t.*, (SELECT COUNT(*) FROM ticket_replies WHERE ticket_id = t.id) as reply_count
      FROM tickets t WHERE t.status IN ('open', 'answered') ORDER BY t.updated_at ASC LIMIT 100`
   );
@@ -1791,6 +1791,16 @@ async function addWorldChat(username, message, isGm = false) {
 }
 
 async function getWorldChat(limit = 50, beforeId = null) {
+  // Ensure table exists (self-healing if migration didn't run)
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS world_chat (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(64) NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      is_gm BOOLEAN DEFAULT FALSE
+    )`);
+  } catch { /* best-effort */ }
   // is_gm column may not exist if migration hasn't run yet — fall back gracefully
   const cols = await getWorldChatColumns();
   const gmCol = cols.includes('is_gm') ? ', is_gm' : '';
