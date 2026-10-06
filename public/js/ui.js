@@ -2604,7 +2604,7 @@ export const UI = {
           .map(d => {
             const un = unlocked.has(d.id);
             const inSlot = slots.includes(d.id);
-            const sIcon = d.icon ? `<img src="${d.icon}" class="sk-icon" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"><span class="sk-emoji" style="display:none">${d.emoji}</span>` : `<span class="sk-emoji">${d.emoji}</span>`;
+            const _icon = d.icon || (d.effect && d.effect.icon); const sIcon = _icon ? `<img src="${_icon}" class="sk-icon" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"><span class="sk-emoji" style="display:none">${d.emoji}</span>` : `<span class="sk-emoji">${d.emoji}</span>`;
             // Show cost, gain, or free (e.g., "+15 Focus" for generators like Steady Shot)
             const costText = !un ? `\u{1F512} Lv ${d.unlockLevel}`
               : d.cost ? `${rdef.emoji} ${d.cost}`
@@ -2631,7 +2631,7 @@ export const UI = {
       const un = unlocked.has(d.id);
       const mast = Engine.skillMastery ? Engine.skillMastery(state, d.id) : null;
       el.innerHTML = `
-        <span class="dt-emoji">${d.emoji}</span>
+        <span class="dt-emoji">${(() => { const ic = d.icon || (d.effect && d.effect.icon); return ic ? `<img src="${ic}" style="width:48px;height:48px;object-fit:contain" onerror="this.replaceWith(document.createTextNode('${d.emoji}'))">` : d.emoji; })()}</span>
         <h3>${esc(d.name)}</h3>
         <div class="dt-meta">
           <span class="dt-tag">${esc(d.school || '')}</span>
@@ -6873,12 +6873,12 @@ export const UI = {
     // Build lookup: (row, col) -> talent def
     const posMap = {};
     sel.talents.forEach(def => {
-      const c = (def.col !== undefined) ? def.col : 1;
+      const c = (def.col !== undefined) ? (def.col % GRID_COLS) : 1;
       posMap[`${def.row}:${c}`] = def;
     });
     // Render talent nodes positioned in grid
     sel.talents.forEach(def => {
-      const c = (def.col !== undefined) ? def.col : 1;
+      const c = (def.col !== undefined) ? (def.col % GRID_COLS) : 1;
       const key = `${classId}:${selId}:${def.id}`;
       const rank = Math.max(0, Math.floor((ct.spent || {})[key] || 0));
       const maxed = rank >= def.maxRank;
@@ -6906,7 +6906,7 @@ export const UI = {
         const belowNeed = (belowRow - 1) * 5;
         // Find talents in row below that are roughly aligned
         sel.talents.filter(t => t.row === belowRow).forEach(below => {
-          const bc = (below.col !== undefined) ? below.col : 1;
+          const bc = (below.col !== undefined) ? (below.col % GRID_COLS) : 1;
           // Draw arrow if columns are close (prereq relationship)
           if (Math.abs(bc - c) <= 1) {
             const x1 = c * CELL_W + CELL_W / 2;
