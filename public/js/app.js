@@ -421,8 +421,6 @@ async function boot() {
   // auth, and session lookup entirely; boot a fresh local-only character.
   if (isTestMode()) { await enterTestMode(); return; }
   UI.init()
-  // Start Oct 10 countdown banner
-  if (typeof UI !== 'undefined' && UI.startShipCountdown) UI.startShipCountdown();;
   Audio.init(); // registers first-gesture unlock + button click ticks
   // Notification prefs live on the save; UI.notify() reads them through this.
   UI.setNotifPrefsProvider(() => (App.state && App.state.settings && App.state.settings.notif) || {});
