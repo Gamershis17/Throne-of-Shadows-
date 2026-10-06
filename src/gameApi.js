@@ -1291,14 +1291,29 @@ router.post(
     if (result.alreadyClaimed) return res.status(400).json({ error: 'Already claimed.' });
 
     const m = result.mail;
-    // Grant gold
+    // Grant gold and items
+    const srow = await getStateRow(req.user.id);
+    const blob = srow ? parseBlob(srow.state_json) : {};
     if (m.gold > 0) {
-      const srow = await getStateRow(req.user.id);
-      const blob = srow ? parseBlob(srow.state_json) : {};
       blob.gold = (blob.gold || 0) + Number(m.gold);
-      // TODO: grant items to inventory
-      await saveStateBlob(req.user.id, blob);
     }
+    // Grant items to inventory (with stats if provided)
+    const mailItems = Array.isArray(m.items) ? m.items : (typeof m.items === 'string' ? JSON.parse(m.items || '[]') : []);
+    if (mailItems.length) {
+      if (!Array.isArray(blob.inventory)) blob.inventory = [];
+      for (const mi of mailItems) {
+        const qty = Math.max(1, Math.floor(Number(mi.qty) || 1));
+        for (let i = 0; i < qty; i++) {
+          blob.inventory.push({
+            id: 'mail-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            name: String(mi.name || 'Item').slice(0, 60),
+            stats: (mi.stats && typeof mi.stats === 'object') ? mi.stats : {},
+            fromMail: true,
+          });
+        }
+      }
+    }
+    await saveStateBlob(req.user.id, blob);
     res.json({ ok: true, gold: Number(m.gold), items: m.items });
   })
 );
