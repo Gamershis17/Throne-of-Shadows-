@@ -1791,18 +1791,35 @@ async function addWorldChat(username, message, isGm = false) {
 }
 
 async function getWorldChat(limit = 50, beforeId = null) {
+  // is_gm column may not exist if migration hasn't run yet — fall back gracefully
+  const cols = await getWorldChatColumns();
+  const gmCol = cols.includes('is_gm') ? ', is_gm' : '';
   if (beforeId) {
     const { rows } = await pool.query(
-      'SELECT id, username, message, created_at, is_gm FROM world_chat WHERE id < $1 ORDER BY id DESC LIMIT $2',
+      `SELECT id, username, message, created_at${gmCol} FROM world_chat WHERE id < $1 ORDER BY id DESC LIMIT $2`,
       [beforeId, limit]
     );
     return rows.reverse();
   }
   const { rows } = await pool.query(
-    'SELECT id, username, message, created_at, is_gm FROM world_chat ORDER BY id DESC LIMIT $1',
+    `SELECT id, username, message, created_at${gmCol} FROM world_chat ORDER BY id DESC LIMIT $1`,
     [limit]
   );
   return rows.reverse();
+}
+
+let _worldChatCols = null;
+async function getWorldChatColumns() {
+  if (_worldChatCols) return _worldChatCols;
+  try {
+    const { rows } = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'world_chat'`
+    );
+    _worldChatCols = rows.map(r => r.column_name);
+  } catch {
+    _worldChatCols = ['id', 'username', 'message', 'created_at'];
+  }
+  return _worldChatCols;
 }
 
 async function searchWorldChat(query, limit = 100) {
