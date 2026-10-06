@@ -821,6 +821,7 @@ body.owner-page.custom-bg {
             <div class="form-group">
               <label class="owner-label">Items (one per line: name x qty)</label>
               <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input type="text" id="mail-item-custom" class="owner-input" placeholder="Or type a custom item name..." style="flex:1">
                 <select id="mail-item-picker" class="owner-input" style="flex:1">
                   <option value="">— Pick an item to add —</option>
                   <optgroup label="⚔️ Weapons">
@@ -863,7 +864,9 @@ body.owner-page.custom-bg {
               <button id="mail-item-add-btn" class="owner-btn small" type="button" style="margin-bottom:8px">➕ Add Item with Stats</button>
               <textarea id="mail-items" class="owner-input" rows="3" placeholder="God Sword x1&#10;Health Potion x5"></textarea>
             </div>
-            <button id="mail-send-btn" class="owner-btn gold">📬 Send Mail</button>
+            <div style="position:sticky;bottom:0;background:var(--owner-bg,#1a1a2e);padding:12px 0;margin-top:8px;border-top:1px solid #333">
+              <button id="mail-send-btn" class="owner-btn gold" style="width:100%;padding:14px;font-size:16px">📬 Send Mail</button>
+            </div>
             <div id="mail-err" class="owner-err"></div>
           </div>
           <div class="panel-box" style="margin-top:1rem">
