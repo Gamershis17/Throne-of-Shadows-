@@ -135,6 +135,15 @@ async function migrate() {
       status VARCHAR(20) NOT NULL DEFAULT 'active'
     )`);
   } catch (e) { /* already exists */ }
+  // Fix auctions created with millisecond timestamps in TIMESTAMPTZ columns
+  // (bug: createAuction passed Date.now() numbers instead of ISO strings).
+  // Recompute expires_at from created_at + duration_hours where it's invalid.
+  try {
+    await pool.query(`
+      UPDATE auctions SET expires_at = created_at + (duration_hours || ' hours')::interval
+      WHERE status = 'active' AND (expires_at IS NULL OR expires_at > NOW() + INTERVAL '1 year' OR expires_at < '2000-01-01')
+    `);
+  } catch (e) { /* migration best-effort */ }
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS tickets (
       id SERIAL PRIMARY KEY,
@@ -1656,10 +1665,11 @@ async function createAuction(seller, itemName, itemData, quantity, unitPrice, du
   const now = Date.now();
   const expiresAt = now + (durationHours * 3600 * 1000);
   const buyout = unitPrice * quantity;
+  // TIMESTAMPTZ columns need ISO strings, not millisecond numbers
   const { rows } = await pool.query(
     `INSERT INTO auctions (seller, item_name, item_data, quantity, unit_price, buyout_price, duration_hours, created_at, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-    [seller, itemName, JSON.stringify(itemData || {}), quantity, unitPrice, buyout, durationHours, now, expiresAt]
+    [seller, itemName, JSON.stringify(itemData || {}), quantity, unitPrice, buyout, durationHours, new Date(now).toISOString(), new Date(expiresAt).toISOString()]
   );
   return rows[0];
 }
