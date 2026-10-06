@@ -515,8 +515,11 @@
   // Format: "Name x Qty [attack:500, defense:100]"
   bind('mail-item-add-btn', () => {
     const picker = $m('mail-item-picker');
+    const custom = $m('mail-item-custom');
     const ta = $m('mail-items');
-    if (!picker || !ta || !picker.value) return;
+    // Use custom name if typed, otherwise picker value
+    const itemName = (custom && custom.value.trim()) || (picker && picker.value);
+    if (!ta || !itemName) return;
     // Collect stats from inputs
     const statKeys = ['attack', 'defense', 'maxHp', 'critChance', 'critDamage', 'lifesteal'];
     const stats = {};
@@ -525,13 +528,14 @@
       const v = el ? Number(el.value) : 0;
       if (v > 0) stats[k] = v;
     }
-    let line = picker.value;
+    let line = itemName;
     if (Object.keys(stats).length) {
       line += ' [' + Object.entries(stats).map(([k, v]) => k + ':' + v).join(', ') + ']';
     }
     const cur = ta.value.trim();
     ta.value = cur ? cur + '\n' + line : line;
-    picker.value = '';
+    if (picker) picker.value = '';
+    if (custom) custom.value = '';
     // Clear stat inputs
     for (const k of statKeys) { const el = $m('mail-stat-' + k); if (el) el.value = ''; }
   });
