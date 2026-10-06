@@ -1778,6 +1778,17 @@ async function deleteMail(mailId, username) {
 
 // ---------- world chat (global in-game chat) ----------
 async function addWorldChat(username, message, isGm = false) {
+  // Ensure table and is_gm column exist (self-healing if migration didn't run)
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS world_chat (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(64) NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      is_gm BOOLEAN DEFAULT FALSE
+    )`);
+    await pool.query(`ALTER TABLE world_chat ADD COLUMN IF NOT EXISTS is_gm BOOLEAN DEFAULT FALSE`);
+  } catch { /* best-effort */ }
   const { rows } = await pool.query(
     'INSERT INTO world_chat (username, message, created_at, is_gm) VALUES ($1, $2, NOW(), $3) RETURNING id, created_at',
     [username, message, isGm]
