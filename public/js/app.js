@@ -4080,7 +4080,11 @@ async function loadAuctions() {
     auctions.forEach(a => {
       const div = document.createElement('div');
       div.style.cssText = 'border:1px solid #3a2f52;border-radius:8px;padding:12px;margin-bottom:8px;background:#171224';
-      const expires = new Date(a.expires_at).toLocaleString();
+      let expires = '—';
+      try {
+        const d = new Date(a.expires_at);
+        expires = isNaN(d.getTime()) ? '—' : d.toLocaleString();
+      } catch { expires = '—'; }
       const isMine = ahMode === 'mine';
       div.innerHTML = `
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -4093,10 +4097,17 @@ async function loadAuctions() {
             <div style="color:#9a8fb5;font-size:12px">${Number(a.unit_price).toLocaleString()}g each • Expires ${expires}</div>
           </div>
           ${isMine
-            ? `<button onclick="cancelAuctionListing(${a.id})" style="padding:8px 16px;border-radius:8px;border:none;background:#a33;color:#fff;cursor:pointer">Cancel</button>`
-            : `<button onclick="buyAuctionListing(${a.id})" style="padding:8px 16px;border-radius:8px;border:none;background:#3fae5a;color:#fff;font-weight:bold;cursor:pointer">Buy</button>`}
+            ? `<button data-ah-cancel="${a.id}" style="padding:8px 16px;border-radius:8px;border:none;background:#a33;color:#fff;cursor:pointer">Cancel</button>`
+            : `<button data-ah-buy="${a.id}" style="padding:8px 16px;border-radius:8px;border:none;background:#3fae5a;color:#fff;font-weight:bold;cursor:pointer">Buy</button>`}
         </div>`;
       list.appendChild(div);
+    });
+    // CSP-safe: delegate Buy/Cancel clicks (no inline onclick)
+    list.querySelectorAll('[data-ah-buy]').forEach(btn => {
+      btn.addEventListener('click', () => buyAuctionListing(Number(btn.dataset.ahBuy)));
+    });
+    list.querySelectorAll('[data-ah-cancel]').forEach(btn => {
+      btn.addEventListener('click', () => cancelAuctionListing(Number(btn.dataset.ahCancel)));
     });
   } catch (e) {
     list.innerHTML = '<p class="muted small">Failed to load auctions.</p>';
@@ -4110,8 +4121,8 @@ function populateAhBagPicker() {
   try {
     const state = (window.App && window.App.state) || {};
     const ores = (state.mine && state.mine.ores) || {};
-    // Engine.ORE_TIERS may not be available; use globalThis.Engine
-    const tiers = (typeof Engine !== 'undefined' && Engine.ORE_TIERS) || (window.Engine && window.Engine.ORE_TIERS) || [];
+    // Engine is imported as a module in app.js — use it directly
+    const tiers = (Engine && Engine.ORE_TIERS) || [];
     const items = [];
     for (const tier of tiers) {
       const count = Math.floor(ores[tier.id] || 0);
