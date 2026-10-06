@@ -3897,7 +3897,8 @@ function appendChatMessage(m) {
   const msgBox = document.getElementById('world-chat-messages');
   if (!msgBox) return;
   const div = document.createElement('div');
-  div.style.cssText = 'padding:4px 0;border-bottom:1px solid #1a1530;font-size:14px';
+  div.style.cssText = 'padding:4px 0;border-bottom:1px solid #1a1530;font-size:14px;transition:opacity 3s ease';
+  div.dataset.chatTime = new Date(m.created_at).getTime() || Date.now();
   const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   const gmBadge = m.is_gm ? `<span style="background:#ffd700;color:#000;font-weight:bold;padding:1px 6px;border-radius:4px;font-size:10px;margin-right:4px">&lt;GM&gt;</span>` : '';
   div.innerHTML = `<span style="color:#9a8fb5;font-size:11px">${time}</span> ${gmBadge}<strong style="color:${m.is_gm ? '#ffd700' : '#f0c75e'}">${escapeHtml(m.username)}</strong>: <span style="color:#e8dfd0">${escapeHtml(m.message)}</span>`;
@@ -3905,6 +3906,24 @@ function appendChatMessage(m) {
   // Keep only last 100 in DOM
   while (msgBox.children.length > 100) msgBox.removeChild(msgBox.firstChild);
 }
+
+// Fade out chat messages older than 90 seconds (gentle, non-breaking)
+setInterval(() => {
+  try {
+    const msgBox = document.getElementById('world-chat-messages');
+    if (!msgBox) return;
+    const now = Date.now();
+    for (const div of msgBox.children) {
+      const t = Number(div.dataset.chatTime) || now;
+      const ageSec = (now - t) / 1000;
+      if (ageSec > 90) {
+        div.style.opacity = '0.35';
+      } else if (ageSec > 60) {
+        div.style.opacity = '0.65';
+      }
+    }
+  } catch { /* never break chat */ }
+}, 10000);
 
 async function pollWorldChat() {
   // Only poll if chat tab is active
