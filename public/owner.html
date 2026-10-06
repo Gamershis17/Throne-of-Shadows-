@@ -799,7 +799,7 @@ body.owner-page.custom-bg {
               <div id="mail-player-list" style="flex:1;overflow-y:auto;min-height:200px;max-height:calc(80vh - 220px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;background:rgba(0,0,0,0.15)"></div>
             </div>
             <!-- Main Mail Area -->
-            <div style="flex:1;min-width:0;min-height:0;max-height:calc(90vh - 140px);overflow-y:auto;padding-right:8px">
+            <div style="flex:1;min-width:0">
           <div class="panel-box">
             <h2 class="panel-title">📬 Send Mail to Player</h2>
             <p class="muted">Send mail with text, gold, and items. No cost to you. Select players from the list ←</p>
@@ -865,9 +865,7 @@ body.owner-page.custom-bg {
               <button id="mail-item-add-btn" class="owner-btn small" type="button" style="margin-bottom:8px">➕ Add Item with Stats</button>
               <textarea id="mail-items" class="owner-input" rows="3" placeholder="God Sword x1&#10;Health Potion x5"></textarea>
             </div>
-            <div style="position:sticky;bottom:0;background:var(--owner-bg,#1a1a2e);padding:12px 0;margin-top:8px;border-top:1px solid #333">
-              <button id="mail-send-btn" class="owner-btn gold" style="width:100%;padding:14px;font-size:16px">📬 Send Mail</button>
-            </div>
+            <button id="mail-send-btn" class="owner-btn gold" style="width:100%;padding:14px;font-size:16px;margin-top:12px">📬 Send Mail</button>
             <div id="mail-err" class="owner-err"></div>
           </div>
           <div class="panel-box" style="margin-top:1rem">
