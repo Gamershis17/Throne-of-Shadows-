@@ -77,6 +77,9 @@ const {
   promotePartyLeader,
   getPartyView,
   syncPartyNpcs,
+  // world chat
+  getWorldChat,
+  addWorldChat,
   // friends / presence
   sendFriendRequest,
   respondFriendRequest,
