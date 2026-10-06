@@ -444,7 +444,7 @@
     const u = pvUser();
     if (!u) { setErr('pv-err', '❌ Enter a username in Player Search first.'); return; }
     if (!confirm(`Reset ${u}'s stage to 1?`)) return;
-    const { ok, j } = await api('/api/gm/set-level', { method: 'POST', body: JSON.stringify({ username: u, level: 1 }) });
+    const { ok, j } = await api('/api/gm/set-stage', { method: 'POST', body: JSON.stringify({ username: u, stage: 1 }) });
     setErr('pv-err', ok ? `✅ ${u}'s stage reset to 1` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
   bind('pv-reset-level-btn', async () => {
