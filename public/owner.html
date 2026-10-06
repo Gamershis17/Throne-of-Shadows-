@@ -851,8 +851,16 @@ body.owner-page.custom-bg {
                     <option>Name Change Token x1</option>
                   </optgroup>
                 </select>
-                <button id="mail-item-add-btn" class="owner-btn small" type="button">➕ Add</button>
               </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+                <div><label class="owner-label" style="font-size:11px">⚔️ Attack</label><input type="number" id="mail-stat-attack" class="owner-input" placeholder="0" min="0"></div>
+                <div><label class="owner-label" style="font-size:11px">🛡️ Defense</label><input type="number" id="mail-stat-defense" class="owner-input" placeholder="0" min="0"></div>
+                <div><label class="owner-label" style="font-size:11px">❤️ Max HP</label><input type="number" id="mail-stat-maxHp" class="owner-input" placeholder="0" min="0"></div>
+                <div><label class="owner-label" style="font-size:11px">💥 Crit %</label><input type="number" id="mail-stat-critChance" class="owner-input" placeholder="0" min="0" max="100"></div>
+                <div><label class="owner-label" style="font-size:11px">💢 Crit Dmg %</label><input type="number" id="mail-stat-critDamage" class="owner-input" placeholder="0" min="0"></div>
+                <div><label class="owner-label" style="font-size:11px">✨ Lifesteal %</label><input type="number" id="mail-stat-lifesteal" class="owner-input" placeholder="0" min="0" max="100"></div>
+              </div>
+              <button id="mail-item-add-btn" class="owner-btn small" type="button" style="margin-bottom:8px">➕ Add Item with Stats</button>
               <textarea id="mail-items" class="owner-input" rows="3" placeholder="God Sword x1&#10;Health Potion x5"></textarea>
             </div>
             <button id="mail-send-btn" class="owner-btn gold">📬 Send Mail</button>
