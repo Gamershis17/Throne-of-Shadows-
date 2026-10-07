@@ -7048,3 +7048,30 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
 .f5-gm-row { display: flex; gap: 8px; }
 .f5-gm-row .f5-gm-input { flex: 1; min-width: 0; }
 .btn.wide { width: 100%; }
+
+/* Bag category tabs */
+.bag-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.bag-tab {
+  background: #1a1428; border: 1px solid #3a2f52; color: #9a8fb5;
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+}
+.bag-tab.active { background: #3a2a5c; border-color: #c084fc; color: #fff; }
+.bag-slot { position: relative; }
+.bag-slot-actions { display: flex; gap: 4px; margin-top: 4px; }
+.bag-slot-actions .btn { font-size: 11px; padding: 3px 8px; }
+
+/* Crafting section */
+.crafting-section { margin-top: 8px; }
+.craft-set { background: #141021; border: 1px solid #2a2044; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.craft-set h4 { margin: 0 0 4px 0; color: #ffd700; }
+.craft-recipes { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.craft-recipe { display: flex; justify-content: space-between; align-items: center; background: #1a1428; border-radius: 8px; padding: 8px 10px; gap: 8px; }
+.craft-info { flex: 1; font-size: 13px; }
+.craft-have { color: #7fd67f; }
+.craft-missing { color: #e06c6c; }
+
+/* Vendor shops */
+.vendor-grid { display: flex; flex-direction: column; gap: 8px; }
+.vendor-item { display: flex; align-items: center; gap: 10px; background: #1a1428; border-radius: 8px; padding: 8px 10px; }
+.vendor-emoji { font-size: 28px; }
+.vendor-info { flex: 1; font-size: 13px; display: flex; flex-direction: column; }
