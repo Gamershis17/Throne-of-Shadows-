@@ -1,5 +1,5 @@
-// F2 GM Quick Panel — in-game overlay for Game Masters
-// Press F2 to toggle. Only visible to GM+ roles.
+// GM Quick Panel (Q / . hotkey) — in-game overlay for Game Masters
+// Press Q or . to toggle. Only visible to GM+ roles.
 // Provides: quick commands, buffs, debuffs, testing tools.
 
 const F5Panel = (() => {
@@ -267,9 +267,12 @@ const F5Panel = (() => {
     else console.log('[F5]', msg);
   }
 
-  // F2 key listener — opens GM panel (F5 is browser refresh, so we use F2)
+  // Hotkey listener — Q or . opens GM panel (GM+ roles only)
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') {
+    // Don't trigger while typing in inputs
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.key === 'q' || e.key === 'Q' || e.key === '.') {
       e.preventDefault();
       toggle();
     }
