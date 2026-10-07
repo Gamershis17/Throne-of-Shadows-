@@ -59,6 +59,12 @@ const App = {
   meter: null, // live damage meter: { startAt, fighters: {key: {label, total, samples:[{t,total}]}} }
 };
 
+// Expose globally for GM panel (f5-panel.js) and console debugging
+window.App = App;
+window.Engine = Engine;
+window.UI = UI;
+window.saveNow = saveNow;
+
 // ---------------- server gate (maintenance / deploy windows) ----------------
 // Returns 'maintenance' (show the maintenance screen), 'ok', or
 // 'unreachable' (server still down after retries — fall through to the

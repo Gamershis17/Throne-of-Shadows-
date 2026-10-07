@@ -12,7 +12,8 @@ const F5Panel = (() => {
   }
 
   function toggle() {
-    if (!isGM()) return;
+    // Note: role is enforced server-side on all /api/gm/* endpoints.
+    // Client gate removed: isGM() was unreliable (App.user timing) and blocked the owner.
     isOpen ? close() : open();
   }
 
