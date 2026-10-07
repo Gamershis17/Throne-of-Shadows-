@@ -823,6 +823,30 @@ router.post(
   })
 );
 
+// ---------- reset stats (owner/admin/gm) ----------
+// Clears GM-granted bonus stats from hero object, pushes live update
+router.post(
+  '/gm/reset-stats',
+  requireRole('gm'),
+  asyncHandler(async (req, res) => {
+    const { username } = req.body || {};
+    const target = await resolveTarget(username);
+    if (!target) return res.status(404).json({ error: 'Target user not found.' });
+    const blob = await loadBlob(target.id);
+    if (blob.hero && typeof blob.hero === 'object') {
+      // Remove bonus stats, keep base identity
+      delete blob.hero.bonusAttack;
+      delete blob.hero.bonusDefense;
+      delete blob.hero.bonusHp;
+      delete blob.hero.bonusCrit;
+    }
+    await persistMergedState(target.id, blob);
+    const live = pushStateUpdate(target.id, { hero: blob.hero });
+    await logAudit(req, 'reset-stats', target.username, `bonus stats cleared${live ? ' [LIVE]' : ''}`);
+    res.json({ ok: true, live });
+  })
+);
+
 // ---------- GM send mail ----------
 // Owner/GM sends mail to a player with subject, body, gold, and items.
 // No cost to sender. Items are passed as array of {id, name, qty}.

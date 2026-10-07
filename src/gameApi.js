@@ -1357,7 +1357,7 @@ router.post(
   '/ah/list',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { createAuction } = require('./db');
+    const { createAuction, getStateRow, parseBlob, saveStateBlob } = require('./db');
     const itemName = (req.body && req.body.itemName) ? String(req.body.itemName).trim().slice(0, 100) : '';
     const quantity = Math.max(1, Math.min(999, Math.floor(Number((req.body && req.body.quantity) || 1))));
     const unitPrice = Math.max(1, Math.floor(Number((req.body && req.body.unitPrice) || 0)));
@@ -1367,11 +1367,31 @@ router.post(
     if (!itemName) return res.status(400).json({ error: 'Item name required.' });
     if (!unitPrice) return res.status(400).json({ error: 'Price required.' });
 
-    // TODO: verify seller owns the item and remove from inventory
+    // Verify seller owns enough of the item and remove from inventory
+    const srow = await getStateRow(req.user.id);
+    const sblob = srow ? parseBlob(srow.state_json) : {};
+    if (!Array.isArray(sblob.inventory)) sblob.inventory = [];
+    const owned = sblob.inventory.filter((i) => i && i.name === itemName);
+    if (owned.length < quantity) {
+      return res.status(400).json({ error: `You only have ${owned.length}x ${itemName}.` });
+    }
+    // Remove the listed quantity (oldest first)
+    let toRemove = quantity;
+    sblob.inventory = sblob.inventory.filter((i) => {
+      if (toRemove > 0 && i && i.name === itemName) { toRemove--; return false; }
+      return true;
+    });
     // 5% listing fee
     const fee = Math.ceil((unitPrice * quantity) * 0.05);
+    if ((sblob.gold || 0) < fee) {
+      return res.status(400).json({ error: `Listing fee is ${fee} gold.` });
+    }
+    sblob.gold -= fee;
+    await saveStateBlob(req.user.id, sblob);
 
-    const a = await createAuction(req.user.username, itemName, {}, quantity, unitPrice, durationHours);
+    // Store the removed items' data for the buyer
+    const itemData = owned[0] && owned[0].stats ? { stats: owned[0].stats } : {};
+    const a = await createAuction(req.user.username, itemName, itemData, quantity, unitPrice, durationHours);
     res.json({ ok: true, id: a.id, fee });
   })
 );
@@ -1380,21 +1400,63 @@ router.post(
   '/ah/buy/:id',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { buyoutAuction, getStateRow, parseBlob, saveStateBlob } = require('./db');
-    const result = await buyoutAuction(Math.floor(Number(req.params.id)), req.user.username);
-    if (result.error) return res.status(400).json({ error: result.error });
-
-    const a = result.auction;
+    const { getAuction, getStateRow, parseBlob, saveStateBlob, sendMail, getUserByUsername } = require('./db');
+    const auctionId = Math.floor(Number(req.params.id));
+    const a = await getAuction(auctionId);
+    if (!a || a.status !== 'active' || a.expires_at < Date.now()) {
+      return res.status(400).json({ error: 'Auction not available.' });
+    }
+    if (a.seller === req.user.username) {
+      return res.status(400).json({ error: 'Cannot buy your own auction.' });
+    }
     const price = Number(a.buyout_price);
+    const qty = Math.max(1, Number(a.quantity) || 1);
 
-    // Deduct gold from buyer
+    // Check buyer gold BEFORE marking sold (was a bug: marked sold then failed)
     const brow = await getStateRow(req.user.id);
     const bblob = brow ? parseBlob(brow.state_json) : {};
     if ((bblob.gold || 0) < price) return res.status(400).json({ error: 'Not enough gold.' });
+
+    // Mark sold
+    const { buyoutAuction } = require('./db');
+    const result = await buyoutAuction(auctionId, req.user.username);
+    if (result.error) return res.status(400).json({ error: result.error });
+
+    // Deduct gold from buyer
     bblob.gold -= price;
+    // Grant item(s) to buyer inventory
+    if (!Array.isArray(bblob.inventory)) bblob.inventory = [];
+    let itemStats = {};
+    try { itemStats = JSON.parse(a.item_data || '{}').stats || {}; } catch (e) {}
+    for (let i = 0; i < qty; i++) {
+      bblob.inventory.push({
+        id: 'ah-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        name: String(a.item_name).slice(0, 60),
+        stats: itemStats,
+        fromAH: true,
+      });
+    }
     await saveStateBlob(req.user.id, bblob);
 
-    // TODO: send gold to seller via mail, grant item to buyer inventory
+    // Send gold to seller via mail (95% after 5% AH cut, fee already taken at listing)
+    const sellerUser = await getUserByUsername(a.seller);
+    if (sellerUser) {
+      await sendMail('Auction House', a.seller,
+        `Sold: ${a.item_name} x${qty}`,
+        `Your auction sold for ${price} gold.`,
+        price, []);
+      // Also credit live if seller is online
+      const { pushStateUpdate } = require('./broadcast');
+      if (pushStateUpdate) {
+        try {
+          const srow = await getStateRow(sellerUser.id);
+          const sblob = srow ? parseBlob(srow.state_json) : {};
+          sblob.gold = (sblob.gold || 0) + price;
+          await saveStateBlob(sellerUser.id, sblob);
+          pushStateUpdate(a.seller, { gold: sblob.gold });
+        } catch (e) {}
+      }
+    }
 
     res.json({ ok: true, item: a.item_name, price });
   })
