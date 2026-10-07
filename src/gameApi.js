@@ -1795,6 +1795,27 @@ router.post(
   })
 );
 
+// Set custom guild emblem (PNG URL). Guild Master and Officers only.
+router.post(
+  '/guilds/emblem',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { pool } = require('./db');
+    const ctx = await guildContext(req, res);
+    if (!ctx) return;
+    if (!rankAtLeast(ctx.myRank, 'officer')) {
+      return res.status(403).json({ error: 'Only the Guild Master and Officers can set the emblem.' });
+    }
+    let url = req.body && typeof req.body.url === 'string' ? req.body.url.trim().slice(0, 500) : '';
+    // Basic URL validation — must be https and look like an image
+    if (url && !/^https:\/\/[^<>\"\s]+\.(png|jpg|jpeg|gif|webp)(\?[^<>\"\s]*)?$/i.test(url)) {
+      return res.status(400).json({ error: 'Must be a direct https:// link to a PNG/JPG/GIF/WebP image.' });
+    }
+    await pool.query('UPDATE guilds SET emblem_url = $1 WHERE id = $2', [url, ctx.guild.id]);
+    res.json({ ok: true, emblemUrl: url });
+  })
+);
+
 // Donate personal gold to the guild treasury.
 // Atomic: locks the player_state row and guild row in one transaction so
 // concurrent donations and autosaves cannot create or lose gold.

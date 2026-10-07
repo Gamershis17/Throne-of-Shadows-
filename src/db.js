@@ -108,6 +108,13 @@ async function migrate() {
   try {
     await pool.query('ALTER TABLE guilds ADD COLUMN hall_forge_level INTEGER NOT NULL DEFAULT 0');
   } catch (e) { /* already exists */ }
+  // Guild revamp: custom emblem URL (PNG) + tag shine style
+  try {
+    await pool.query("ALTER TABLE guilds ADD COLUMN emblem_url TEXT NOT NULL DEFAULT ''");
+  } catch (e) { /* already exists */ }
+  try {
+    await pool.query("ALTER TABLE guilds ADD COLUMN tag_style VARCHAR(32) NOT NULL DEFAULT 'shine'");
+  } catch (e) { /* already exists */ }
   // World Chat, Mail, Auctions, Tickets: ensure tables exist (in case schema.sql didn't run)
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS world_chat (
@@ -1824,16 +1831,27 @@ async function getWorldChat(limit = 50, beforeId = null) {
   } catch { /* best-effort */ }
   // is_gm column may not exist if migration hasn't run yet — fall back gracefully
   const cols = await getWorldChatColumns();
-  const gmCol = cols.includes('is_gm') ? ', is_gm' : '';
+  const gmCol = cols.includes('is_gm') ? ', wc.is_gm' : '';
+  // Include guild tag + emblem, player country, and chat display settings
+  // Settings live in state_json->'settings'; showGuildTag defaults true, showCountryFlag defaults false
+  const baseSelect = `SELECT wc.id, wc.username, wc.message, wc.created_at${gmCol}, g.tag AS guild_tag, g.emblem_url AS guild_emblem,
+    ps.state_json::json->>'country' AS country,
+    COALESCE((ps.state_json::json->'settings'->>'showGuildTag'), 'true') AS show_guild_tag,
+    COALESCE((ps.state_json::json->'settings'->>'showCountryFlag'), 'false') AS show_country_flag
+    FROM world_chat wc
+    LEFT JOIN guild_members gm ON LOWER(gm.username) = LOWER(wc.username)
+    LEFT JOIN guilds g ON g.id = gm.guild_id
+    LEFT JOIN users u ON LOWER(u.username) = LOWER(wc.username)
+    LEFT JOIN player_state ps ON ps.user_id = u.id`;
   if (beforeId) {
     const { rows } = await pool.query(
-      `SELECT id, username, message, created_at${gmCol} FROM world_chat WHERE id < $1 ORDER BY id DESC LIMIT $2`,
+      `${baseSelect} WHERE wc.id < $1 ORDER BY wc.id DESC LIMIT $2`,
       [beforeId, limit]
     );
     return rows.reverse();
   }
   const { rows } = await pool.query(
-    `SELECT id, username, message, created_at${gmCol} FROM world_chat ORDER BY id DESC LIMIT $1`,
+    `${baseSelect} ORDER BY wc.id DESC LIMIT $1`,
     [limit]
   );
   return rows.reverse();
