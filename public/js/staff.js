@@ -166,6 +166,30 @@
     setErr('inspect-err', '✅ Found ' + inspectedUser, true);
   });
 
+  // Role Manager (owner only) — give/remove GM and other staff roles
+  bind('role-set-btn', async () => {
+    const username = (($('role-username') || {}).value || '').trim();
+    const role = ($('role-select') || {}).value || 'gm';
+    const resultEl = $('role-result');
+    if (!username) { setErr('role-err', '❌ Enter a username.'); return; }
+    if (!confirm(`Set ${username}'s role to ${role}?`)) return;
+    setErr('role-err', 'Setting role...');
+    try {
+      const r = await fetch('/api/roles', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, role }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error((j && j.error) || 'Failed');
+      setErr('role-err', `✅ ${username} is now ${role}.`, true);
+      if (resultEl) resultEl.innerHTML = `<div class="sub-panel"><p>✅ <b>${esc(username)}</b> → <b>${esc(role)}</b></p><p class="muted small">They need to relog for it to take effect.</p></div>`;
+      $('role-username').value = '';
+    } catch (e) {
+      setErr('role-err', '❌ ' + e.message);
+    }
+  });
+
   // Moderation actions (use existing gm endpoints where available)
   bind('mod-mute-btn', async () => {
     if (!inspectedUser) { setErr('mod-err', '❌ Inspect a player first.'); return; }
