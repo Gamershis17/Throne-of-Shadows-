@@ -662,17 +662,7 @@ label.fld > span { font-size: 0.8rem; color: var(--muted); }
   overflow: hidden;
 }
 
-/* Oct 10 countdown banner */
-.ship-countdown {
-  background: linear-gradient(90deg, #1a1a2e, #16213e);
-  border: 1px solid #ffd700;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  text-align: center;
-  font-weight: bold;
-  color: #ffd700;
-  margin: 0.5rem 0;
-}
+
 .spell-icon-wrap.empty-icon {
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem;
@@ -6959,3 +6949,16 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
   .tn-name { font-size: 0.75rem; }
   .tn-desc { font-size: 0.65rem; }
 }
+
+/* Test Lab banner (preview mode) */
+#testlab-banner {
+  background: linear-gradient(90deg, #2a1a3e, #1a2a3e);
+  border-bottom: 2px solid #b366ff;
+  color: #e0ccff;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+#testlab-banner[hidden] { display: none; }
