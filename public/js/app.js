@@ -1,19 +1,19 @@
 // ============================================================
 // app.js?v=v20261006a — boot, session flow, game loops, combat wiring.
 // ============================================================
-import { api } from './api.js?v=v20261006a';
+import { api } from './api.js?v=20261007b';
 // Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
 // the coordinator must add one (this module is new).
-import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=v20261006a';
-import * as Engine from './engine.js?v20261003bk';
-import { UI, esc, formatNum } from './ui.js?v=v20261006b';
-import { Auth } from './auth.js?v=20260930ar';
-import { GM } from './gm.js?v=v20261006a';
+import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261007b';
+import * as Engine from './engine.js?v=20261007b';
+import { UI, esc, formatNum } from './ui.js?v=20261007b';
+import { Auth } from './auth.js?v=20261007b';
+import { GM } from './gm.js?v=20261007b';
 
-import { Raid } from './raid.js?v=v20261006a';
-import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261001e';
+import { Raid } from './raid.js?v=20261007b';
+import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261007b';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
-import { Realm } from './realm.js?v20261003bk';
+import { Realm } from './realm.js?v=20261007b';
 import { Audio } from './audio.js?v=v20261006a';
 
 const TICK_MS = 250;
@@ -1527,6 +1527,15 @@ function onKillEnemy() {
     UI.combatLog('🥚 A pet egg dropped!', 'loot');
     if (UI.activeTab === 'pets') UI.renderPetsTab(s);
   }
+  // Material/consumable/treasure drops (new loot categories)
+  const matDrops = Engine.rollMaterialDrops(isBoss);
+  for (const drop of matDrops) {
+    Engine.addLootDrop(s, drop);
+    const countTxt = drop.count > 1 ? ` ×${drop.count}` : '';
+    UI.notify('loot', `${drop.emoji} ${drop.name}${countTxt}!`, 'loot');
+    UI.combatLog(`${drop.emoji} Looted ${drop.name}${countTxt} (${drop.rarity})`, 'loot');
+  }
+  if (matDrops.length && UI.activeTab === 'bag') UI.renderBag(s);
   if (xpRes.levels.length) {
     UI.levelUpModal(xpRes.levels);
     UI.combatLog(`⬆️ Level ${xpRes.levels[xpRes.levels.length - 1]}!`, 'level');
@@ -4229,20 +4238,35 @@ function populateAhBagPicker() {
   picker.innerHTML = '<p class="muted small">Loading...</p>';
   try {
     const state = (window.App && window.App.state) || {};
-    const ores = (state.mine && state.mine.ores) || {};
-    // Engine is imported as a module in app.js — use it directly
-    const tiers = (Engine && Engine.ORE_TIERS) || [];
+    const E = (typeof Engine !== 'undefined' && Engine) || (window.Engine || {});
     const items = [];
+    // Ores from mining
+    const ores = (state.mine && state.mine.ores) || {};
+    const tiers = (E && E.ORE_TIERS) || [];
     for (const tier of tiers) {
       const count = Math.floor(ores[tier.id] || 0);
-      if (count > 0) items.push({ name: tier.name, emoji: tier.emoji || '⛏️', count });
+      if (count > 0) items.push({ name: tier.name, emoji: tier.emoji || '⛏️', count, kind: 'ore', id: tier.id });
     }
-    // Also check inventory for other items
+    // Loot bag: materials, consumables, treasure, food (new loot system)
+    const lootBag = state.lootBag || {};
+    const getDef = (E && E.getLootItemById) || null;
+    for (const [id, count] of Object.entries(lootBag)) {
+      if (!(count > 0)) continue;
+      const def = getDef ? getDef(id) : null;
+      if (def) {
+        items.push({ name: def.name, emoji: def.emoji || '📦', count: Math.floor(count), kind: 'loot', id });
+      } else {
+        items.push({ name: id, emoji: '📦', count: Math.floor(count), kind: 'loot', id });
+      }
+    }
+    // Gear from inventory (non-equipped)
     const inv = state.inventory || [];
+    const equipped = state.equipped || {};
+    const equippedIds = new Set(Object.values(equipped));
     for (const it of inv) {
+      if (!it || equippedIds.has(it.id || it.uid)) continue;
       const n = it.name || it.id || 'Item';
-      const c = it.qty || it.quantity || 1;
-      if (c > 0) items.push({ name: n, emoji: it.emoji || '📦', count: c });
+      items.push({ name: n, emoji: it.emoji || '⚔️', count: 1, kind: 'gear', id: it.id || it.uid });
     }
     if (!items.length) {
       picker.innerHTML = '<p class="muted small">Bag is empty.</p>';

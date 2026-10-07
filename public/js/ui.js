@@ -3,9 +3,9 @@
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v20261003bk';
+import * as Engine from './engine.js?v=20261007b';
 import { Audio } from './audio.js?v=v20261006a';
-import { api } from './api.js?v=20261005pv';
+import { api } from './api.js?v=20261007b';
 
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -248,7 +248,7 @@ export const UI = {
       'balance-log-btn', 'balance-log-badge', 'balance-log-hud', 'balance-log-badge-hud',
       'friends-hud', 'friend-req-badge-hud', 'social-hud', 'discord-login',
       'inn-btn', 'leave-inn-btn', 'inn-hpfill', 'inn-hptext', 'inn-status', 'inn-glow',
-      'mine-rock', 'mine-btn', 'mine-find', 'ore-grid', 'forge-section',
+      'mine-rock', 'mine-btn', 'mine-find', 'ore-grid', 'forge-section', 'crafting-section',
       'mine-pickaxe', 'mine-stats',
       'pause-pill',
       'talents-root',
@@ -4442,37 +4442,176 @@ export const UI = {
     }).join('') + `<p class="muted small">One forged item per slot — reforging replaces the old one. Forged gear survives rebirth.</p>`;
   },
 
+  renderCrafting(state) {
+    const el = this.els['crafting-section'];
+    if (!el || !window.Engine) return;
+    const E = Engine;
+    const recipes = E.CRAFTING_RECIPES || [];
+    if (!recipes.length) { el.innerHTML = '<p class="muted">No recipes yet.</p>'; return; }
+
+    // Group by set
+    const sets = {};
+    for (const r of recipes) {
+      if (!sets[r.setId]) sets[r.setId] = { def: (E.PLAYER_SETS || {})[r.setId], recipes: [] };
+      sets[r.setId].recipes.push(r);
+    }
+
+    let html = '';
+    for (const [setId, group] of Object.entries(sets)) {
+      const def = group.def || {};
+      html += `<div class="craft-set"><h4>${def.emoji || '🔨'} ${def.name || setId}</h4>`;
+      html += `<p class="muted small">${def.desc || ''}</p><div class="craft-recipes">`;
+      for (const r of group.recipes) {
+        const check = E.canCraft ? E.canCraft(state, r.id) : { ok: false, missing: [] };
+        // Cost display
+        let costHtml = '';
+        for (const [matId, need] of Object.entries(r.cost)) {
+          let have = 0, name = matId, emoji = '';
+          if (matId.startsWith('ore:')) {
+            const oreId = matId.slice(4);
+            have = Math.floor((state.mine && state.mine.ores && state.mine.ores[oreId]) || 0);
+            const ore = (E.ORE_BY_ID || {})[oreId];
+            name = ore ? ore.name : oreId; emoji = ore ? ore.emoji : '';
+          } else {
+            have = (state.lootBag && state.lootBag[matId]) || 0;
+            const mdef = E.getLootItemById ? E.getLootItemById(matId) : null;
+            name = mdef ? mdef.name : matId; emoji = mdef ? mdef.emoji : '';
+          }
+          const okCls = have >= need ? 'craft-have' : 'craft-missing';
+          costHtml += `<span class="${okCls}">${emoji} ${need}x ${name} (${have})</span> `;
+        }
+        const goldOk = (state.gold || 0) >= r.gold;
+        html += `<div class="craft-recipe">
+          <div class="craft-info"><b>${r.name}</b> <span class="muted small">(${r.slot})</span><br>
+          <span class="small">${costHtml}</span><br>
+          <span class="${goldOk ? 'craft-have' : 'craft-missing'}">💰 ${r.gold.toLocaleString()} gold</span></div>
+          <button class="btn small gold" data-craft="${r.id}" ${check.ok ? '' : 'disabled'}>🔨 Craft</button>
+        </div>`;
+      }
+      html += '</div></div>';
+    }
+    el.innerHTML = html || '<p class="muted">No recipes yet.</p>';
+
+    // Wire craft buttons
+    el.querySelectorAll('[data-craft]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.craft;
+        const res = E.craftItem(state, id);
+        if (res.ok) {
+          this.toast('🔨 Crafted ' + res.item.name + '!', 'success');
+          if (window.saveNow) saveNow();
+        } else {
+          this.toast('❌ ' + res.error, 'error');
+        }
+        this.renderCrafting(state);
+        this.renderBag(state);
+      };
+    });
+  },
+
   renderBag(state) {
     const list = document.getElementById('bag-list');
     if (!list) return;
-    // Oct 10 batch: WoW-style bag slots. Ore loot lives in state.mine.ores
-    // as counters; render each as 99x-capped stacks, one slot per stack.
+    // Bag categories: tabs for All, Gear, Ores, Materials, Consumables, Treasure
+    const activeCat = this._bagCat || 'all';
+    const cats = (window.Engine && Engine.BAG_CATEGORIES) || [{ id: 'all', name: 'All', emoji: '🎒' }];
+
+    // Build tab bar
+    let tabsHtml = '<div class="bag-tabs">';
+    for (const c of cats) {
+      const isActive = c.id === activeCat ? ' active' : '';
+      tabsHtml += `<button class="bag-tab${isActive}" data-bagcat="${c.id}">${c.emoji} ${c.name}</button>`;
+    }
+    tabsHtml += '</div>';
+
+    // Collect items by category
+    const items = [];
+    const lootBag = state.lootBag || {};
+
+    // Ores (from mining)
     const ores = (state.mine && state.mine.ores) || {};
-    const STACK = 250;
-    let slotsHtml = '';
-    let totalSlots = 0;
-    let totalItems = 0;
     for (const tier of (Engine.ORE_TIERS || [])) {
       const count = Math.floor(ores[tier.id] || 0);
       if (count <= 0) continue;
-      totalItems += count;
-      let remaining = count;
-      while (remaining > 0) {
-        const inSlot = Math.min(STACK, remaining);
-        totalSlots++;
-        slotsHtml += `<div class="bag-slot" title="${esc(tier.name)} × ${inSlot}">` +
-          `<span class="bag-slot-emoji">${tier.emoji}</span>` +
-          (inSlot > 1 ? `<span class="bag-slot-count">${inSlot}</span>` : '') +
-          `</div>`;
-        remaining -= inSlot;
-      }
+      items.push({ emoji: tier.emoji, name: tier.name, count, category: 'ores', id: 'ore:' + tier.id, desc: tier.name + ' ore' });
     }
+
+    // Materials, consumables, treasure (from lootBag)
+    for (const [id, count] of Object.entries(lootBag)) {
+      if (count <= 0) continue;
+      const def = Engine.getLootItemById ? Engine.getLootItemById(id) : null;
+      if (!def) continue;
+      items.push({
+        emoji: def.emoji, name: def.name, count, category: def.category, id,
+        desc: def.desc || '', usable: def.category === 'consumables',
+        sellable: true, goldValue: def.goldValue || 1, rarity: def.rarity,
+      });
+    }
+
+    // Gear (from inventory — non-equipped items)
+    const inv = state.inventory || [];
+    for (const g of inv) {
+      if (!g || g.equipped) continue;
+      items.push({
+        emoji: '⚔️', name: g.name, count: 1, category: 'gear', id: 'gear:' + (g.uid || g.id),
+        desc: (g.rarity || '') + ' ' + (g.slot || ''),
+      });
+    }
+
+    // Filter by active category
+    const filtered = activeCat === 'all' ? items : items.filter(i => i.category === activeCat);
+
+    // Render slots
+    let slotsHtml = '';
+    for (const it of filtered) {
+      const countBadge = it.count > 1 ? `<span class="bag-slot-count">${it.count}</span>` : '';
+      const useBtn = it.usable ? `<button class="btn small" data-use-loot="${it.id}">Use</button>` : '';
+      const sellBtn = it.sellable ? `<button class="btn small ghost" data-sell-loot="${it.id}">Sell</button>` : '';
+      slotsHtml += `<div class="bag-slot" title="${esc(it.name)}${it.desc ? ' — ' + esc(it.desc) : ''}">` +
+        `<span class="bag-slot-emoji">${it.emoji}</span>${countBadge}` +
+        `<div class="bag-slot-actions">${useBtn}${sellBtn}</div></div>`;
+    }
+
+    const totalItems = items.reduce((s, i) => s + (i.count || 1), 0);
     const head = `<div class="bag-head"><span>🎒 Bag</span>` +
-      `<span class="muted small">${totalSlots} slots · ${totalItems} ore</span></div>`;
-    list.innerHTML = head +
+      `<span class="muted small">${filtered.length} types · ${totalItems} items</span></div>`;
+    list.innerHTML = head + tabsHtml +
       (slotsHtml
         ? `<div class="bag-slots">${slotsHtml}</div>`
-        : '<p class="muted">Your bags are empty. Go mine some ore!</p>');
+        : '<p class="muted">Nothing in this category yet.</p>');
+
+    // Wire tabs
+    list.querySelectorAll('[data-bagcat]').forEach(btn => {
+      btn.onclick = () => { this._bagCat = btn.dataset.bagcat; this.renderBag(state); };
+    });
+    // Wire use/sell
+    list.querySelectorAll('[data-use-loot]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.useLoot;
+        const res = Engine.useConsumable ? Engine.useConsumable(state, id) : null;
+        if (res && res.ok) {
+          this.toast('Used ' + res.item.name + '!', 'success');
+          if (window.saveNow) saveNow();
+        } else {
+          this.toast(res ? res.error : 'Cannot use', 'error');
+        }
+        this.renderBag(state);
+      };
+    });
+    list.querySelectorAll('[data-sell-loot]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.sellLoot;
+        const def = Engine.getLootItemById ? Engine.getLootItemById(id) : null;
+        const count = (state.lootBag && state.lootBag[id]) || 0;
+        if (!def || count <= 0) return;
+        const gold = (def.goldValue || 1) * count;
+        delete state.lootBag[id];
+        if (Engine.addGold) Engine.addGold(state, gold);
+        this.toast('Sold ' + count + 'x ' + def.name + ' (+' + gold + ' gold)!', 'success');
+        if (window.saveNow) saveNow();
+        this.renderBag(state);
+      };
+    });
   },
 
   renderTown(state) {
@@ -4487,8 +4626,9 @@ export const UI = {
           <button id="town-sell-all" class="btn small gold">Sell All Loot</button>
           <div id="town-sell-list" class="bag-slots"></div>
         </div>
-        <div class="town-section"><h3>🍖 Food & Supplies</h3><p class="muted small">More vendors coming soon.</p></div>
-        <div class="town-section"><h3>🐾 Pet Supplies</h3><p class="muted small">More vendors coming soon.</p></div>`;
+        <div class="town-section"><h3>🍖 Food & Supplies</h3><div id="vendor-food-list"></div></div>
+        <div class="town-section"><h3>🐾 Pet Supplies</h3><div id="vendor-pet-list"></div></div>
+        <div class="town-section"><h3>🧪 Material Trader</h3><div id="vendor-mat-list"></div></div>`;
     }
     // Inn upgrades (Rank 0/10, no gold cost)
     const innList = document.getElementById('inn-upgrade-list');
@@ -4545,11 +4685,55 @@ export const UI = {
       if (sellable.length === 0) {
         list.innerHTML = '<p class="muted small">Your bags are empty. Go loot something!</p>';
       } else {
-        list.innerHTML = sellable.map((it, i) => 
+        list.innerHTML = sellable.map((it, i) =>
           `<div class="bag-item"><div class="bag-item-name">${esc(it.id)}</div><div class="bag-item-qty">×${it.qty}</div><div class="muted small">${esc(it.bagName)}</div></div>`
         ).join('');
       }
     }
+    // Vendors: Food, Pet Supplies, Materials
+    this.renderVendor(state, 'vendor-food-list', Engine.VENDOR_FOOD);
+    this.renderVendor(state, 'vendor-pet-list', Engine.VENDOR_PET);
+    this.renderVendor(state, 'vendor-mat-list', Engine.VENDOR_MATERIALS);
+  },
+
+  renderVendor(state, elId, stock) {
+    const el = document.getElementById(elId);
+    if (!el || !window.Engine || !stock) return;
+    const E = Engine;
+    let html = '<div class="vendor-grid">';
+    for (const entry of stock) {
+      const def = E.getVendorItemDef ? E.getVendorItemDef(entry.itemId) : null;
+      if (!def) continue;
+      const afford = (state.gold || 0) >= entry.price;
+      const owned = (state.lootBag && state.lootBag[entry.itemId]) || 0;
+      html += `<div class="vendor-item">
+        <span class="vendor-emoji">${def.emoji}</span>
+        <div class="vendor-info"><b>${esc(def.name)}</b>
+        <span class="muted small">${esc(def.desc || '')}</span>
+        ${owned > 0 ? `<span class="muted small">Owned: ${owned}</span>` : ''}</div>
+        <button class="btn small gold" data-vendor-buy="${entry.itemId}" data-vendor-price="${entry.price}" ${afford ? '' : 'disabled'}>💰 ${entry.price.toLocaleString()}</button>
+      </div>`;
+    }
+    html += '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll('[data-vendor-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const itemId = btn.dataset.vendorBuy;
+        const price = Number(btn.dataset.vendorPrice);
+        const res = E.buyFromVendor(state, itemId, price);
+        if (res.ok) {
+          this.toast(`Bought ${res.item.name}!`, 'success');
+          if (window.saveNow) saveNow();
+        } else {
+          this.toast('❌ ' + res.error, 'error');
+        }
+        // Re-render vendors + gold display
+        this.renderVendor(state, 'vendor-food-list', E.VENDOR_FOOD);
+        this.renderVendor(state, 'vendor-pet-list', E.VENDOR_PET);
+        this.renderVendor(state, 'vendor-mat-list', E.VENDOR_MATERIALS);
+        if (this.updateHUD) this.updateHUD(state, window.App && App.user);
+      };
+    });
   },
 
   renderGear(state) {
@@ -4832,6 +5016,8 @@ export const UI = {
     }
     // Galaxy Forge lives at the bottom of the Armory tab.
     this.renderForge(state);
+    // Crafting section (new loot/material gear sets)
+    this.renderCrafting(state);
   },
 
   // ---------------- mine ----------------

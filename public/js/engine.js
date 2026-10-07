@@ -99,6 +99,115 @@ export function innRegen(hp, maxHp, dt) {
 // gear with player-chosen custom stats. Only ONE forged weapon and ONE
 // forged armor can exist at a time — enforced structurally by the two
 // forge slots below.
+
+// === BAG CATEGORIES ===
+// Every lootable item belongs to a category. The bag renders tabs for each.
+export const BAG_CATEGORIES = [
+  { id: 'all',         name: 'All',         emoji: '🎒' },
+  { id: 'gear',        name: 'Gear',        emoji: '⚔️' },
+  { id: 'ores',        name: 'Ores',        emoji: '⛏️' },
+  { id: 'materials',   name: 'Materials',   emoji: '🧪' },
+  { id: 'consumables', name: 'Consumables', emoji: '🍖' },
+  { id: 'treasure',    name: 'Treasure',    emoji: '💎' },
+];
+export const BAG_CATEGORY_BY_ID = Object.fromEntries(BAG_CATEGORIES.map(c => [c.id, c]));
+
+// === MONSTER LOOT ===
+// Materials that drop from enemies. weight = relative drop chance.
+export const MONSTER_MATERIALS = [
+  { id: 'bone_shard',    name: 'Bone Shard',    emoji: '🦴', category: 'materials', rarity: 'common',    goldValue: 5,   weight: 30, desc: 'A sharp fragment of monster bone.' },
+  { id: 'beast_hide',    name: 'Beast Hide',    emoji: '🟫', category: 'materials', rarity: 'common',    goldValue: 8,   weight: 25, desc: 'Tough hide from a slain beast.' },
+  { id: 'shadow_ichor',  name: 'Shadow Ichor',  emoji: '🩸', category: 'materials', rarity: 'uncommon',  goldValue: 20,  weight: 15, desc: 'Dark fluid pulsing with shadow energy.' },
+  { id: 'crystal_fang',  name: 'Crystal Fang',  emoji: '🦷', category: 'materials', rarity: 'uncommon',  goldValue: 35,  weight: 10, desc: 'A fang hardened into crystal.' },
+  { id: 'ember_heart',   name: 'Ember Heart',   emoji: '❤️‍🔥', category: 'materials', rarity: 'rare',   goldValue: 80,  weight: 6,  desc: 'Still warm. Still beating.' },
+  { id: 'void_essence',  name: 'Void Essence',  emoji: '🌀', category: 'materials', rarity: 'epic',      goldValue: 200, weight: 3,  desc: 'Condensed nothingness. Valuable.' },
+  { id: 'dragon_scale',  name: 'Dragon Scale',  emoji: '🐉', category: 'materials', rarity: 'legendary', goldValue: 500, weight: 1,  desc: 'A scale from a true dragon. Priceless.' },
+];
+export const MATERIAL_BY_ID = Object.fromEntries(MONSTER_MATERIALS.map(m => [m.id, m]));
+
+// === CONSUMABLE LOOT ===
+export const CONSUMABLE_LOOT = [
+  { id: 'health_potion', name: 'Health Potion', emoji: '🧪', category: 'consumables', rarity: 'common', goldValue: 25, weight: 20, desc: 'Restores 50% HP.', effect: { healPct: 50 } },
+  { id: 'iron_ration',   name: 'Iron Ration',   emoji: '🍖', category: 'consumables', rarity: 'common', goldValue: 15, weight: 18, desc: 'Restores 25% HP.', effect: { healPct: 25 } },
+  { id: 'rage_tonic',    name: 'Rage Tonic',    emoji: '🔥', category: 'consumables', rarity: 'uncommon', goldValue: 60, weight: 8, desc: '+25% damage for 60s.', effect: { buff: 'dmgPct', pct: 25, sec: 60 } },
+  { id: 'stone_skin',    name: 'Stoneskin Brew', emoji: '🪨', category: 'consumables', rarity: 'uncommon', goldValue: 60, weight: 8, desc: '-25% damage taken for 60s.', effect: { buff: 'dmgTakenPct', pct: -25, sec: 60 } },
+  { id: 'lucky_charm',   name: 'Lucky Charm',   emoji: '🍀', category: 'consumables', rarity: 'rare', goldValue: 150, weight: 4, desc: '+50% gold for 120s.', effect: { buff: 'goldPct', pct: 50, sec: 120 } },
+];
+export const CONSUMABLE_BY_ID = Object.fromEntries(CONSUMABLE_LOOT.map(c => [c.id, c]));
+
+// === TREASURE LOOT (sellable valuables) ===
+export const TREASURE_LOOT = [
+  { id: 'rusty_coin',    name: 'Rusty Coin',    emoji: '🪙', category: 'treasure', rarity: 'junk', goldValue: 10, weight: 30, desc: 'Worth a few gold to a collector.' },
+  { id: 'silver_trinket', name: 'Silver Trinket', emoji: '📿', category: 'treasure', rarity: 'common', goldValue: 50, weight: 18, desc: 'Shiny. Sellable.' },
+  { id: 'golden_idol',   name: 'Golden Idol',   emoji: '🗿', category: 'treasure', rarity: 'rare', goldValue: 300, weight: 5, desc: 'Heavy. Very sellable.' },
+  { id: 'jeweled_crown', name: 'Jeweled Crown', emoji: '👑', category: 'treasure', rarity: 'epic', goldValue: 1000, weight: 2, desc: 'Fit for a king. Or a fence.' },
+];
+export const TREASURE_BY_ID = Object.fromEntries(TREASURE_LOOT.map(t => [t.id, t]));
+
+// === VENDOR STOCKS ===
+// Items players can BUY with gold from Town vendors.
+// price: gold cost. stockId links to CONSUMABLE_LOOT etc. for item defs.
+// New food items defined here (also usable as consumables).
+export const FOOD_ITEMS = [
+  { id: 'bread',       name: 'Traveler\'s Bread', emoji: '🍞', category: 'consumables', rarity: 'common', goldValue: 5,  desc: 'Restores 15% HP.', effect: { healPct: 15 } },
+  { id: 'roast_meat',  name: 'Roast Meat',         emoji: '🍗', category: 'consumables', rarity: 'common', goldValue: 12, desc: 'Restores 35% HP.', effect: { healPct: 35 } },
+  { id: 'hearty_stew', name: 'Hearty Stew',        emoji: '🍲', category: 'consumables', rarity: 'uncommon', goldValue: 30, desc: 'Restores 75% HP.', effect: { healPct: 75 } },
+  { id: 'elixir_vigor', name: 'Elixir of Vigor',   emoji: '⚗️', category: 'consumables', rarity: 'rare', goldValue: 100, desc: '+50% XP for 120s.', effect: { buff: 'xpPct', pct: 50, sec: 120 } },
+  { id: 'swift_boots_brew', name: 'Swiftbrew',     emoji: '🥤', category: 'consumables', rarity: 'uncommon', goldValue: 45, desc: '+30% attack speed for 90s.', effect: { buff: 'attackSpeedPct', pct: 30, sec: 90 } },
+];
+export const FOOD_BY_ID = Object.fromEntries(FOOD_ITEMS.map(f => [f.id, f]));
+
+// Vendor inventories: { itemId, price }
+// Food vendor sells consumables + food
+export const VENDOR_FOOD = [
+  { itemId: 'bread', price: 25 },
+  { itemId: 'iron_ration', price: 75 },
+  { itemId: 'roast_meat', price: 120 },
+  { itemId: 'health_potion', price: 150 },
+  { itemId: 'hearty_stew', price: 300 },
+  { itemId: 'rage_tonic', price: 350 },
+  { itemId: 'stone_skin', price: 350 },
+  { itemId: 'swift_boots_brew', price: 400 },
+  { itemId: 'lucky_charm', price: 800 },
+  { itemId: 'elixir_vigor', price: 900 },
+];
+// Pet supplies vendor
+export const VENDOR_PET = [
+  { itemId: 'pet_treat', price: 100 },
+  { itemId: 'pet_feast', price: 500 },
+  { itemId: 'pet_elixir', price: 2000 },
+];
+export const PET_SUPPLIES = [
+  { id: 'pet_treat',  name: 'Pet Treat',  emoji: '🦴', category: 'consumables', rarity: 'common', goldValue: 20, desc: '+500 pet XP.', effect: { petXp: 500 } },
+  { id: 'pet_feast',  name: 'Pet Feast',  emoji: '🍖', category: 'consumables', rarity: 'uncommon', goldValue: 100, desc: '+2500 pet XP.', effect: { petXp: 2500 } },
+  { id: 'pet_elixir', name: 'Pet Elixir', emoji: '💊', category: 'consumables', rarity: 'rare', goldValue: 400, desc: '+10000 pet XP.', effect: { petXp: 10000 } },
+];
+export const PET_SUPPLY_BY_ID = Object.fromEntries(PET_SUPPLIES.map(p => [p.id, p]));
+
+// Materials vendor (basic mats for crafting)
+export const VENDOR_MATERIALS = [
+  { itemId: 'bone_shard', price: 50 },
+  { itemId: 'beast_hide', price: 80 },
+  { itemId: 'shadow_ichor', price: 200 },
+  { itemId: 'crystal_fang', price: 350 },
+];
+
+// Look up any buyable item (consumables, food, pet supplies, materials)
+export function getVendorItemDef(itemId) {
+  return CONSUMABLE_BY_ID[itemId] || FOOD_BY_ID[itemId] || PET_SUPPLY_BY_ID[itemId] || MATERIAL_BY_ID[itemId] || null;
+}
+
+// Buy from vendor: deduct gold, add to lootBag
+export function buyFromVendor(state, itemId, price) {
+  const def = getVendorItemDef(itemId);
+  if (!def) return { ok: false, error: 'Unknown item' };
+  if ((state.gold || 0) < price) return { ok: false, error: 'Not enough gold' };
+  state.gold -= price;
+  if (!state.lootBag) state.lootBag = {};
+  state.lootBag[itemId] = (state.lootBag[itemId] || 0) + 1;
+  return { ok: true, item: def };
+}
+
 export const ORE_TIERS = [
   { id: 'copper',      name: 'Copper',            emoji: '🟤', power: 1,    unlockDepth: 1 },
   { id: 'iron',        name: 'Iron',              emoji: '⚙️', power: 3,    unlockDepth: 3 },
@@ -878,50 +987,50 @@ export const SPELL_SLOT_COUNT = 6;
 // the UI falls back to the spell's emoji. Add entries as icons are created.
 export const SPELL_ICONS = {
   // Hunter
-  'steady-shot': 'icons/spells/steady-shot.png',
-  'arcane-shot': 'icons/spells/arcane-shot.png',
-  'mend-pet': 'icons/spells/mend-pet.png',
-  'aimed-shot': 'icons/spells/aimed-shot.png',
-  'frost-trap': 'icons/spells/frost-trap.png',
-  'multi-shot': 'icons/spells/multi-shot.png',
-  'kill-command': 'icons/spells/kill-command.png',
-  'explosive-trap': 'icons/spells/explosive-trap.png',
+  'steady-shot': 'icons/spells/steady-shot.png?v=20261007b',
+  'arcane-shot': 'icons/spells/arcane-shot.png?v=20261007b',
+  'mend-pet': 'icons/spells/mend-pet.png?v=20261007b',
+  'aimed-shot': 'icons/spells/aimed-shot.png?v=20261007b',
+  'frost-trap': 'icons/spells/frost-trap.png?v=20261007b',
+  'multi-shot': 'icons/spells/multi-shot.png?v=20261007b',
+  'kill-command': 'icons/spells/kill-command.png?v=20261007b',
+  'explosive-trap': 'icons/spells/explosive-trap.png?v=20261007b',
   // Rogue
-  'sinister-strike': 'icons/spells/sinister-strike.png',
-  'eviscerate': 'icons/spells/eviscerate.png',
-  'stealth': 'icons/spells/stealth.png',
-  'backstab': 'icons/spells/backstab.png',
-  'poison-blade': 'icons/spells/poison-blade.png',
-  'evasion': 'icons/spells/evasion.png',
-  'kidney-shot': 'icons/spells/kidney-shot.png',
-  'blade-flurry': 'icons/spells/blade-flurry.png',
+  'sinister-strike': 'icons/spells/sinister-strike.png?v=20261007b',
+  'eviscerate': 'icons/spells/eviscerate.png?v=20261007b',
+  'stealth': 'icons/spells/stealth.png?v=20261007b',
+  'backstab': 'icons/spells/backstab.png?v=20261007b',
+  'poison-blade': 'icons/spells/poison-blade.png?v=20261007b',
+  'evasion': 'icons/spells/evasion.png?v=20261007b',
+  'kidney-shot': 'icons/spells/kidney-shot.png?v=20261007b',
+  'blade-flurry': 'icons/spells/blade-flurry.png?v=20261007b',
   // Warrior
-  'charge': 'icons/spells/charge.png',
-  'slam': 'icons/spells/slam.png',
-  'shield-block': 'icons/spells/shield-block.png',
-  'w-exec': 'icons/spells/w-exec.png',
-  'whirlwind': 'icons/spells/whirlwind.png',
-  'battle-shout': 'icons/spells/battle-shout.png',
-  'pummel': 'icons/spells/pummel.png',
-  'challenging-shout': 'icons/spells/challenging-shout.png',
+  'charge': 'icons/spells/charge.png?v=20261007b',
+  'slam': 'icons/spells/slam.png?v=20261007b',
+  'shield-block': 'icons/spells/shield-block.png?v=20261007b',
+  'w-exec': 'icons/spells/w-exec.png?v=20261007b',
+  'whirlwind': 'icons/spells/whirlwind.png?v=20261007b',
+  'battle-shout': 'icons/spells/battle-shout.png?v=20261007b',
+  'pummel': 'icons/spells/pummel.png?v=20261007b',
+  'challenging-shout': 'icons/spells/challenging-shout.png?v=20261007b',
   // Mage
-  'arcane-blast': 'icons/spells/arcane-blast.png',
-  'fireball': 'icons/spells/fireball.png',
-  'frostbolt': 'icons/spells/frostbolt.png',
-  'arcane-missiles': 'icons/spells/arcane-missiles.png',
-  'frost-nova': 'icons/spells/frost-nova.png',
-  'pyroblast': 'icons/spells/pyroblast.png',
-  'blizzard': 'icons/spells/blizzard.png',
-  'blink': 'icons/spells/blink.png',
+  'arcane-blast': 'icons/spells/arcane-blast.png?v=20261007b',
+  'fireball': 'icons/spells/fireball.png?v=20261007b',
+  'frostbolt': 'icons/spells/frostbolt.png?v=20261007b',
+  'arcane-missiles': 'icons/spells/arcane-missiles.png?v=20261007b',
+  'frost-nova': 'icons/spells/frost-nova.png?v=20261007b',
+  'pyroblast': 'icons/spells/pyroblast.png?v=20261007b',
+  'blizzard': 'icons/spells/blizzard.png?v=20261007b',
+  'blink': 'icons/spells/blink.png?v=20261007b',
   // Druid
-  'moonfire': 'icons/spells/moonfire.png',
-  'wrath': 'icons/spells/wrath.png',
-  'rejuvenation': 'icons/spells/rejuvenation.png',
-  'bear-form': 'icons/spells/bear-form.png',
-  'cat-form': 'icons/spells/cat-form.png',
-  'rake': 'icons/spells/rake.png',
-  'regrowth': 'icons/spells/regrowth.png',
-  'tranquility': 'icons/spells/tranquility.png',
+  'moonfire': 'icons/spells/moonfire.png?v=20261007b',
+  'wrath': 'icons/spells/wrath.png?v=20261007b',
+  'rejuvenation': 'icons/spells/rejuvenation.png?v=20261007b',
+  'bear-form': 'icons/spells/bear-form.png?v=20261007b',
+  'cat-form': 'icons/spells/cat-form.png?v=20261007b',
+  'rake': 'icons/spells/rake.png?v=20261007b',
+  'regrowth': 'icons/spells/regrowth.png?v=20261007b',
+  'tranquility': 'icons/spells/tranquility.png?v=20261007b',
 };
 // Get the icon path for a spell, or null if none is defined.
 export function spellIcon(id) {
@@ -2176,6 +2285,78 @@ export function makeLootItem(stage, rarityId, slot, classId) {
 // normal enemies 10% (+streak bonus), bosses 80% (rare+ guaranteed, raid
 // bosses epic+). Radiant enemies always drop. Post-mythic rarities are
 // stage-gated via maxRarityIdxForStage().
+
+// === MATERIAL / CONSUMABLE / TREASURE DROPS ===
+// Rolls for the new loot categories on enemy kill.
+// Materials: 25% from normals, 60% from bosses (1-2 drops)
+// Consumables: 12% from normals, 30% from bosses
+// Treasure: 8% from normals, 25% from bosses
+export function rollMaterialDrops(isBoss = false) {
+  const drops = [];
+  const pickWeighted = (table) => {
+    const total = table.reduce((sum, m) => sum + m.weight, 0);
+    let r = Math.random() * total;
+    for (const m of table) { r -= m.weight; if (r <= 0) return m; }
+    return table[0];
+  };
+  // Materials
+  const matChance = isBoss ? 0.6 : 0.25;
+  if (Math.random() < matChance) {
+    const mat = pickWeighted(MONSTER_MATERIALS);
+    drops.push({ ...mat, count: isBoss && Math.random() < 0.4 ? 2 : 1 });
+  }
+  // Consumables
+  const conChance = isBoss ? 0.3 : 0.12;
+  if (Math.random() < conChance) {
+    const con = pickWeighted(CONSUMABLE_LOOT);
+    drops.push({ ...con, count: 1 });
+  }
+  // Treasure
+  const treChance = isBoss ? 0.25 : 0.08;
+  if (Math.random() < treChance) {
+    const tre = pickWeighted(TREASURE_LOOT);
+    drops.push({ ...tre, count: 1 });
+  }
+  return drops;
+}
+
+// Add a material/consumable/treasure drop to player state.
+// Materials/consumables/treasure stack in state.lootBag = { [id]: count }
+export function addLootDrop(state, drop) {
+  if (!state.lootBag) state.lootBag = {};
+  const id = drop.id;
+  state.lootBag[id] = (state.lootBag[id] || 0) + (drop.count || 1);
+  return state.lootBag[id];
+}
+
+// Look up any loot item by id (materials, consumables, treasure)
+export function getLootItemById(id) {
+  return MATERIAL_BY_ID[id] || CONSUMABLE_BY_ID[id] || TREASURE_BY_ID[id] || FOOD_BY_ID[id] || PET_SUPPLY_BY_ID[id] || null;
+}
+
+// Use a consumable (apply its effect)
+export function useConsumable(state, id) {
+  const item = getLootItemById(id);
+  if (!item || !state.lootBag || !(state.lootBag[id] > 0)) return { ok: false, error: 'None left' };
+  state.lootBag[id]--;
+  if (state.lootBag[id] <= 0) delete state.lootBag[id];
+  const fx = item.effect || {};
+  if (fx.healPct) {
+    const heal = Math.floor((state.maxHp || 100) * fx.healPct / 100);
+    state.hp = Math.min(state.maxHp || 100, (state.hp || 0) + heal);
+  } else if (fx.buff) {
+    addBuff(state, fx.buff, fx.pct, fx.sec);
+  } else if (fx.petXp) {
+    // Pet XP: give to active pet (first pet in party)
+    const pets = ensurePets(state);
+    const active = (pets.party && pets.party[0]) || (pets.stable && pets.stable[0]);
+    if (active) {
+      active.xp = (active.xp || 0) + fx.petXp;
+    }
+  }
+  return { ok: true, item };
+}
+
 export function rollLoot(stage, isBoss = false, minIdx = null, opts = {}) {
   const bonus = Math.max(0, Number(opts.bonusChance) || 0);
   // Increased drop rates (2026-10-06): more loot while killing
@@ -2390,6 +2571,37 @@ export const PLAYER_SETS = {
     },
     secondary: ['critDamage', 'dodge'],
   },
+  // === NEW: Material-crafted sets (Phase 3) ===
+  boneforged: {
+    name: 'Boneforged Bulwark', emoji: '🦴',
+    desc: 'Crafted from monster remains. 3pc: +25% max HP. 5pc: +50% max HP, +15% defense.',
+    pieces: {
+      weapon: 'Boneforged Cleaver', armor: 'Boneforged Carapace', helmet: 'Boneforged Skull',
+      boots: 'Boneforged Stompers', trinket: 'Boneforged Totem',
+    },
+    secondary: ['maxHp', 'defense'],
+    craftable: true,
+  },
+  shadowweave: {
+    name: 'Shadowweave Arsenal', emoji: '🌒',
+    desc: 'Woven from shadow. 3pc: +20% attack. 5pc: +40% attack, +15% crit chance.',
+    pieces: {
+      weapon: 'Shadowweave Blade', armor: 'Shadowweave Wrap', helmet: 'Shadowweave Cowl',
+      boots: 'Shadowweave Treads', trinket: 'Shadowweave Orb',
+    },
+    secondary: ['attack', 'critChance'],
+    craftable: true,
+  },
+  dragonscale: {
+    name: 'Dragonscale Regalia', emoji: '🐉',
+    desc: 'Forged from dragon scales. 3pc: +30% attack, +30% max HP. 5pc: +60% attack, +60% max HP, +20 lifesteal.',
+    pieces: {
+      weapon: 'Dragonscale Fang', armor: 'Dragonscale Plate', helmet: 'Dragonscale Crown',
+      boots: 'Dragonscale Talons', trinket: 'Dragonscale Heart',
+    },
+    secondary: ['attack', 'maxHp'],
+    craftable: true,
+  },
 };
 
 // Builds one stage-scaled piece of an earnable set (rare-tier stat budget).
@@ -2408,6 +2620,95 @@ export function makePlayerSetPiece(stage, setId, slot) {
     value: Math.max(1, Math.round((4 + stage * 1.5) * mult)),
     unsellable: false,
   };
+}
+
+// === CRAFTING RECIPES ===
+// Recipes for the craftable gear sets + consumables.
+// cost: { [materialId or 'ore:oreId' or 'gold']: amount }
+export const CRAFTING_RECIPES = [
+  // --- Boneforged Bulwark (early) ---
+  { id: 'craft_boneforged_weapon', name: 'Boneforged Cleaver', setId: 'boneforged', slot: 'weapon',
+    cost: { bone_shard: 10, beast_hide: 5, 'ore:copper': 20 }, gold: 1000 },
+  { id: 'craft_boneforged_armor', name: 'Boneforged Carapace', setId: 'boneforged', slot: 'armor',
+    cost: { bone_shard: 8, beast_hide: 8, 'ore:copper': 15 }, gold: 1000 },
+  { id: 'craft_boneforged_helmet', name: 'Boneforged Skull', setId: 'boneforged', slot: 'helmet',
+    cost: { bone_shard: 6, beast_hide: 4, 'ore:copper': 10 }, gold: 800 },
+  { id: 'craft_boneforged_boots', name: 'Boneforged Stompers', setId: 'boneforged', slot: 'boots',
+    cost: { bone_shard: 6, beast_hide: 4, 'ore:copper': 10 }, gold: 800 },
+  { id: 'craft_boneforged_trinket', name: 'Boneforged Totem', setId: 'boneforged', slot: 'trinket',
+    cost: { bone_shard: 5, beast_hide: 3, 'ore:iron': 10 }, gold: 800 },
+  // --- Shadowweave Arsenal (mid) ---
+  { id: 'craft_shadowweave_weapon', name: 'Shadowweave Blade', setId: 'shadowweave', slot: 'weapon',
+    cost: { shadow_ichor: 10, crystal_fang: 5, 'ore:silver': 20 }, gold: 10000 },
+  { id: 'craft_shadowweave_armor', name: 'Shadowweave Wrap', setId: 'shadowweave', slot: 'armor',
+    cost: { shadow_ichor: 8, crystal_fang: 4, 'ore:silver': 15 }, gold: 10000 },
+  { id: 'craft_shadowweave_helmet', name: 'Shadowweave Cowl', setId: 'shadowweave', slot: 'helmet',
+    cost: { shadow_ichor: 6, crystal_fang: 3, 'ore:silver': 10 }, gold: 8000 },
+  { id: 'craft_shadowweave_boots', name: 'Shadowweave Treads', setId: 'shadowweave', slot: 'boots',
+    cost: { shadow_ichor: 6, crystal_fang: 3, 'ore:silver': 10 }, gold: 8000 },
+  { id: 'craft_shadowweave_trinket', name: 'Shadowweave Orb', setId: 'shadowweave', slot: 'trinket',
+    cost: { shadow_ichor: 5, crystal_fang: 4, 'ore:gold': 10 }, gold: 8000 },
+  // --- Dragonscale Regalia (late) ---
+  { id: 'craft_dragonscale_weapon', name: 'Dragonscale Fang', setId: 'dragonscale', slot: 'weapon',
+    cost: { dragon_scale: 5, ember_heart: 3, void_essence: 2, 'ore:galaxy': 10 }, gold: 100000 },
+  { id: 'craft_dragonscale_armor', name: 'Dragonscale Plate', setId: 'dragonscale', slot: 'armor',
+    cost: { dragon_scale: 4, ember_heart: 2, void_essence: 2, 'ore:galaxy': 8 }, gold: 100000 },
+  { id: 'craft_dragonscale_helmet', name: 'Dragonscale Crown', setId: 'dragonscale', slot: 'helmet',
+    cost: { dragon_scale: 3, ember_heart: 2, void_essence: 1, 'ore:galaxy': 5 }, gold: 80000 },
+  { id: 'craft_dragonscale_boots', name: 'Dragonscale Talons', setId: 'dragonscale', slot: 'boots',
+    cost: { dragon_scale: 3, ember_heart: 2, void_essence: 1, 'ore:galaxy': 5 }, gold: 80000 },
+  { id: 'craft_dragonscale_trinket', name: 'Dragonscale Heart', setId: 'dragonscale', slot: 'trinket',
+    cost: { dragon_scale: 2, ember_heart: 3, void_essence: 2, 'ore:supergalaxy': 5 }, gold: 80000 },
+];
+
+// Check if player can afford a recipe -> { ok, missing: [names] }
+export function canCraft(state, recipeId) {
+  const recipe = CRAFTING_RECIPES.find(r => r.id === recipeId);
+  if (!recipe) return { ok: false, missing: ['Unknown recipe'] };
+  const missing = [];
+  if ((state.gold || 0) < recipe.gold) missing.push(`${recipe.gold} gold`);
+  for (const [matId, need] of Object.entries(recipe.cost)) {
+    let have = 0;
+    if (matId.startsWith('ore:')) {
+      const oreId = matId.slice(4);
+      have = Math.floor((state.mine && state.mine.ores && state.mine.ores[oreId]) || 0);
+    } else {
+      have = (state.lootBag && state.lootBag[matId]) || 0;
+    }
+    if (have < need) {
+      const def = matId.startsWith('ore:') ? ORE_BY_ID[matId.slice(4)] : getLootItemById(matId);
+      missing.push(`${need}x ${(def && def.name) || matId} (have ${have})`);
+    }
+  }
+  return { ok: missing.length === 0, missing, recipe };
+}
+
+// Craft an item: deducts materials, adds the gear piece to inventory.
+export function craftItem(state, recipeId) {
+  const check = canCraft(state, recipeId);
+  if (!check.ok) return { ok: false, error: 'Missing: ' + check.missing.join(', ') };
+  const recipe = check.recipe;
+  // Deduct
+  state.gold = (state.gold || 0) - recipe.gold;
+  for (const [matId, need] of Object.entries(recipe.cost)) {
+    if (matId.startsWith('ore:')) {
+      const oreId = matId.slice(4);
+      state.mine.ores[oreId] = Math.max(0, Math.floor(state.mine.ores[oreId] || 0) - need);
+    } else {
+      state.lootBag[matId] = Math.max(0, (state.lootBag[matId] || 0) - need);
+      if (state.lootBag[matId] <= 0) delete state.lootBag[matId];
+    }
+  }
+  // Create the gear piece (stage-scaled)
+  const stage = state.stage || 1;
+  const item = makePlayerSetPiece(stage, recipe.setId, recipe.slot);
+  item.name = recipe.name; // use the recipe's canonical name
+  if (!state.inventory) state.inventory = [];
+  state.inventory.push(item);
+  // Track crafts for forge counters
+  if (!state.forge) state.forge = {};
+  state.forge.crafts = (state.forge.crafts || 0) + 1;
+  return { ok: true, item };
 }
 
 // Counts equipped pieces per earnable player set -> { setId: count }.

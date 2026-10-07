@@ -4,7 +4,7 @@
 // engine state; best-wave persistence lives on state.raid via engine.js).
 //
 // WIRING (for app.js?v=20261005pv — the parent agent owns this part):
-//   import { Raid } from './raid.js?v=20261005pv';
+//   import { Raid } from './raid.js?v=20261007b';
 //
 //   1. Mode switch: the #mode-switch button with data-mode="raid" already
 //      routes through your mode handler. When the new mode is 'raid',
@@ -33,7 +33,7 @@ import {
   isRaidBoss,
   raidWaveScaling,
   ensureRaidState,
-} from './engine.js?v20261003i';
+} from './engine.js?v=20261007b';
 
 // Module-level run state (not saved; the run always restarts at wave 1).
 let _active = false;

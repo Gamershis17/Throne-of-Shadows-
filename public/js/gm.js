@@ -1,9 +1,9 @@
 // ============================================================
 // gm.js?v=20261005pv — GM console UI. Only opened for staff roles.
 // ============================================================
-import { api } from './api.js?v=20261005pv';
-import { UI, esc, formatNum } from './ui.js?v=v20261006b';
-import { PRIVILEGED_SETS, TITLES, BADGES, CLASSES, SPECS } from './engine.js?v20261003bk';
+import { api } from './api.js?v=20261007b';
+import { UI, esc, formatNum } from './ui.js?v=20261007b';
+import { PRIVILEGED_SETS, TITLES, BADGES, CLASSES, SPECS } from './engine.js?v=20261007b';
 
 const SET_IDS = Object.keys(PRIVILEGED_SETS);
 
@@ -25,7 +25,7 @@ let IdRef = null;
 async function loadIdRef() {
   if (!IdRef) {
     try {
-      IdRef = await import('./id-reference.js?v20261003x');
+      IdRef = await import('./id-reference.js?v=20261007b');
     } catch (e) { console.error('Failed to load id-reference:', e); }
   }
   return IdRef;

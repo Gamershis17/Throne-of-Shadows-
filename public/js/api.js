@@ -1,11 +1,11 @@
 // ============================================================
-// api.js?v=v20261005chat — thin fetch wrapper over the contract HTTP API.
+// api.js?v=20261007b — thin fetch wrapper over the contract HTTP API.
 // All calls use credentials:'same-origin' and JSON.
 // ============================================================
 
 // Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
 // the coordinator must add one (this module is new).
-import { isTestMode } from './testmode.js?v=v20261005chat';
+import { isTestMode } from './testmode.js?v=20261007b';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
