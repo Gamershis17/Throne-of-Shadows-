@@ -1238,7 +1238,7 @@ router.post(
   '/mail/send',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { sendMail, getStateRow, parseBlob } = require('./db');
+    const { sendMail, getStateRow } = require('./db');
     const to = (req.body && req.body.to) ? String(req.body.to).trim() : '';
     const subject = (req.body && req.body.subject) ? String(req.body.subject).trim().slice(0, 100) : '';
     const body = (req.body && req.body.body) ? String(req.body.body).trim().slice(0, 2000) : '';
@@ -1295,7 +1295,7 @@ router.post(
   '/mail/:id/claim',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { claimMail, getStateRow, parseBlob, saveStateBlob } = require('./db');
+    const { claimMail, getStateRow, saveStateBlob } = require('./db');
     const result = await claimMail(Math.floor(Number(req.params.id)), req.user.username);
     if (!result) return res.status(404).json({ error: 'Mail not found.' });
     if (result.alreadyClaimed) return res.status(400).json({ error: 'Already claimed.' });
@@ -1364,7 +1364,7 @@ router.post(
   '/ah/list',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { createAuction, getStateRow, parseBlob, saveStateBlob } = require('./db');
+    const { createAuction, getStateRow, saveStateBlob } = require('./db');
     const itemName = (req.body && req.body.itemName) ? String(req.body.itemName).trim().slice(0, 100) : '';
     const quantity = Math.max(1, Math.min(999, Math.floor(Number((req.body && req.body.quantity) || 1))));
     const unitPrice = Math.max(1, Math.floor(Number((req.body && req.body.unitPrice) || 0)));
