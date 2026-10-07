@@ -254,6 +254,7 @@ const F5Panel = (() => {
       } else if (action === 'killenemy') {
         if (window.App && App.enemy) {
           App.enemy.hp = 0;
+          if (typeof window.onKillEnemy === 'function') window.onKillEnemy();
           toast('💀 Enemy killed');
         } else toast('❌ No enemy');
       } else if (action === 'respawn') {
