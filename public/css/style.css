@@ -6962,3 +6962,89 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
   letter-spacing: 0.05em;
 }
 #testlab-banner[hidden] { display: none; }
+
+/* Guild revamp: shiny tags in world chat */
+.wc-guild-tag {
+  display: inline-block;
+  font-weight: 800; font-size: 11px;
+  padding: 1px 7px; border-radius: 5px; margin-right: 4px;
+  color: #0e0a1a;
+  background: linear-gradient(110deg, #e8b33c 20%, #fff7d6 40%, #e8b33c 60%);
+  background-size: 200% 100%;
+  animation: wc-tag-shine 2.5s linear infinite;
+  text-shadow: none;
+  vertical-align: baseline;
+}
+@keyframes wc-tag-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.wc-gm-badge {
+  display: inline-block;
+  background: #ffd700; color: #000; font-weight: bold;
+  padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-right: 4px;
+  vertical-align: baseline;
+}
+/* Smooth fade for world chat messages (replaces stepped opacity) */
+.wc-msg { transition: opacity 30s linear; }
+.wc-msg.wc-fading { opacity: 0; }
+
+/* Guild emblem display */
+.guild-emblem {
+  width: 48px; height: 48px; border-radius: 10px;
+  object-fit: cover; flex: 0 0 auto;
+  border: 2px solid #e8b33c;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+.guild-emblem-fallback {
+  width: 48px; height: 48px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: #0e0a1a;
+  background: linear-gradient(135deg, #e8b33c, #c084fc);
+  flex: 0 0 auto;
+}
+
+/* Shiny guild tag in guild header */
+.guild-tag-shine {
+  background: linear-gradient(110deg, #e8b33c 20%, #fff7d6 40%, #e8b33c 60%) !important;
+  background-size: 200% 100% !important;
+  animation: wc-tag-shine 2.5s linear infinite;
+}
+
+/* F5 GM Quick Panel */
+#f5-gm-panel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(480px, 92vw); max-height: 85vh; overflow-y: auto;
+  background: #0d0a14; border: 2px solid #ffd700; border-radius: 12px;
+  box-shadow: 0 0 40px rgba(255,215,0,.3), 0 8px 32px rgba(0,0,0,.8);
+  z-index: 99999; color: #e8dfd0;
+}
+#f5-gm-panel.hidden { display: none; }
+.f5-gm-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid #3a2f52;
+  font-weight: 800; font-size: 16px; color: #ffd700;
+  position: sticky; top: 0; background: #0d0a14; z-index: 1;
+}
+.f5-gm-close {
+  background: none; border: none; color: #9a8fb5; font-size: 18px;
+  cursor: pointer; padding: 4px 8px;
+}
+.f5-gm-close:hover { color: #fff; }
+.f5-gm-body { padding: 12px 16px; }
+.f5-gm-section { margin-bottom: 16px; }
+.f5-gm-section h4 { margin: 0 0 8px 0; color: #c084fc; font-size: 14px; }
+.f5-gm-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.f5-gm-btns .btn { font-size: 12px; padding: 6px 10px; }
+
+/* F5 Forge form */
+.f5-gm-form { display: flex; flex-direction: column; gap: 8px; }
+.f5-gm-input {
+  background: #1a1428; border: 1px solid #3a2f52; color: #e8dfd0;
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; width: 100%;
+  box-sizing: border-box;
+}
+.f5-gm-input.small { flex: 1; min-width: 0; }
+.f5-gm-row { display: flex; gap: 8px; }
+.f5-gm-row .f5-gm-input { flex: 1; min-width: 0; }
+.btn.wide { width: 100%; }
