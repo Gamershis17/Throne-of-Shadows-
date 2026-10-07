@@ -2662,7 +2662,7 @@ export const CRAFTING_RECIPES = [
 ];
 
 // Check if player can afford a recipe -> { ok, missing: [names] }
-export function canCraft(state, recipeId) {
+export function canCraftRecipe(state, recipeId) {
   const recipe = CRAFTING_RECIPES.find(r => r.id === recipeId);
   if (!recipe) return { ok: false, missing: ['Unknown recipe'] };
   const missing = [];
@@ -2685,7 +2685,7 @@ export function canCraft(state, recipeId) {
 
 // Craft an item: deducts materials, adds the gear piece to inventory.
 export function craftItem(state, recipeId) {
-  const check = canCraft(state, recipeId);
+  const check = canCraftRecipe(state, recipeId);
   if (!check.ok) return { ok: false, error: 'Missing: ' + check.missing.join(', ') };
   const recipe = check.recipe;
   // Deduct

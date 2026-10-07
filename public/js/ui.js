@@ -4462,7 +4462,7 @@ export const UI = {
       html += `<div class="craft-set"><h4>${def.emoji || '🔨'} ${def.name || setId}</h4>`;
       html += `<p class="muted small">${def.desc || ''}</p><div class="craft-recipes">`;
       for (const r of group.recipes) {
-        const check = E.canCraft ? E.canCraft(state, r.id) : { ok: false, missing: [] };
+        const check = E.canCraftRecipe ? E.canCraftRecipe(state, r.id) : { ok: false, missing: [] };
         // Cost display
         let costHtml = '';
         for (const [matId, need] of Object.entries(r.cost)) {
