@@ -254,7 +254,13 @@ const F5Panel = (() => {
       } else if (action === 'killenemy') {
         if (window.App && App.enemy) {
           App.enemy.hp = 0;
-          if (typeof window.onKillEnemy === 'function') window.onKillEnemy();
+          // Clear the spawn guard in case it's stuck, then trigger real death logic
+          App.spawnPending = false;
+          if (typeof window.onKillEnemy === 'function') {
+            window.onKillEnemy();
+          } else {
+            toast('❌ onKillEnemy not loaded — hard refresh (Ctrl+F5)');
+          }
           toast('💀 Enemy killed');
         } else toast('❌ No enemy');
       } else if (action === 'respawn') {
