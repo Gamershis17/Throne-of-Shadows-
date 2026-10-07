@@ -276,6 +276,25 @@ const F5Panel = (() => {
     if (e.key === 'Escape' && isOpen) close();
   });
 
+  // Mobile fallback: floating GM button (only for GM+ roles, no F5 key on mobile)
+  function addMobileButton() {
+    if (!isGM() || document.getElementById('f5-gm-fab')) return;
+    const fab = document.createElement('button');
+    fab.id = 'f5-gm-fab';
+    fab.innerHTML = '🛠️';
+    fab.title = 'GM Panel';
+    fab.style.cssText = 'position:fixed;bottom:80px;right:12px;z-index:99998;width:48px;height:48px;border-radius:50%;background:#1a1428;border:2px solid #ffd700;font-size:22px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+    fab.addEventListener('click', toggle);
+    document.body.appendChild(fab);
+  }
+  // Check on load and periodically (role loads async)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(addMobileButton, 2000));
+  } else {
+    setTimeout(addMobileButton, 2000);
+  }
+  setInterval(() => { if (isGM()) addMobileButton(); }, 5000);
+
   return { toggle, open, close, isOpen: () => isOpen };
 })();
 
