@@ -253,15 +253,19 @@ const F5Panel = (() => {
         }
       } else if (action === 'killenemy') {
         if (window.App && App.enemy) {
-          App.enemy.hp = 0;
-          // Clear the spawn guard in case it's stuck, then trigger real death logic
-          App.spawnPending = false;
-          if (typeof window.onKillEnemy === 'function') {
-            window.onKillEnemy();
-          } else {
-            toast('❌ onKillEnemy not loaded — hard refresh (Ctrl+F5)');
+          try {
+            App.enemy.hp = 0;
+            App.spawnPending = false;
+            if (typeof window.onKillEnemy === 'function') {
+              window.onKillEnemy();
+              toast('💀 onKillEnemy called');
+            } else {
+              toast('❌ onKillEnemy is ' + typeof window.onKillEnemy);
+            }
+          } catch (err) {
+            toast('❌ Kill error: ' + err.message);
+            console.error('[GM Panel] Kill failed:', err);
           }
-          toast('💀 Enemy killed');
         } else toast('❌ No enemy');
       } else if (action === 'respawn') {
         if (typeof spawnEnemy === 'function') { spawnEnemy(); toast('🔄 Enemy respawned'); }
