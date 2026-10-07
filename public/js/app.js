@@ -1368,7 +1368,22 @@ function damageEnemy(dmg, prefix, sourceLabel) {
   // Screen shake on crits
   if (isCrit && UI.screenShake) UI.screenShake();
   UI.floatText(`${prefix}${formatNum(dmg)}`, isCrit ? 'crit' : 'dmg', dmg);
-  if (enemy.hp <= 0) onKillEnemy();
+  if (enemy.hp <= 0) {
+    try {
+      onKillEnemy();
+    } catch (killErr) {
+      console.error('[Combat] onKillEnemy failed, using fallback:', killErr);
+      // Fallback: minimal kill so enemy never sticks at 0 HP
+      try {
+        App.spawnPending = false;
+        if (App.state) App.state.stage = (App.state.stage || 1) + 1;
+        spawnNextEnemy();
+        if (App.state && window.UI && UI.updateHUD) UI.updateHUD(App.state, App.user);
+      } catch (fbErr) {
+        console.error('[Combat] Fallback kill also failed:', fbErr);
+      }
+    }
+  }
 }
 
 // Spawns the next enemy, delaying briefly when the modern death animation
