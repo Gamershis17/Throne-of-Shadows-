@@ -1,10 +1,10 @@
 // ============================================================
-// ui.js?v=20261005pz — all DOM rendering for Throne of Shadows.
+// ui.js?v=v20261006b — all DOM rendering for Throne of Shadows.
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v20261003bi';
-import { Audio } from './audio.js?v=20261005pz';
+import * as Engine from './engine.js?v20261003bk';
+import { Audio } from './audio.js?v=v20261006a';
 import { api } from './api.js?v=20261005pv';
 
 const $ = (sel, root) => (root || document).querySelector(sel);
@@ -1358,7 +1358,7 @@ export const UI = {
 
   // Preview-only render for the Raids tab. Called from app.js?v=20261005pv onTabSwitch
   // under window.__PREVIEW; `Raid` is passed in by app.js?v=20261005pv (which already
-  // imports raid.js?v=20261005pv), so ui.js?v=20261005pz gains no new import. Info display only —
+  // imports raid.js?v=20261005pv), so ui.js?v=v20261006b gains no new import. Info display only —
   // no raid mechanics. Gated on player level >= Engine.MAX_LEVEL (120).
   renderRaidsPreview(s, Raid) {
     try {

@@ -438,7 +438,9 @@
   bind('pv-reset-stats-btn', async () => {
     const u = pvUser();
     if (!u) { setErr('pv-err', '❌ Enter a username in Player Search first.'); return; }
-    setErr('pv-err', '⏳ Reset stats backend coming soon...', false);
+    if (!confirm(`Reset ${u}'s bonus stats? (Base stats from level/class remain)`)) return;
+    const { ok, j } = await api('/api/gm/reset-stats', { method: 'POST', body: JSON.stringify({ username: u }) });
+    setErr('pv-err', ok ? `✅ ${u}'s bonus stats reset${j.live ? ' (live)' : ''}` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
   bind('pv-reset-stage-btn', async () => {
     const u = pvUser();
@@ -467,6 +469,13 @@
     if (!confirm(`Reset ${u}'s Gold to 0?`)) return;
     const { ok, j } = await api('/api/gm/reset-gold', { method: 'POST', body: JSON.stringify({ username: u }) });
     setErr('pv-err', ok ? `✅ ${u}'s Gold reset to 0${j.live ? ' (live)' : ''}` : '❌ ' + ((j && j.error) || 'failed'), ok);
+  });
+  bind('pv-reset-rebirth-btn', async () => {
+    const u = pvUser();
+    if (!u) { setErr('pv-err', '❌ Enter a username in Player Search first.'); return; }
+    if (!confirm(`Reset ${u}'s Rebirths to 0?`)) return;
+    const { ok, j } = await api('/api/gm/set-rebirth', { method: 'POST', body: JSON.stringify({ username: u, count: 0 }) });
+    setErr('pv-err', ok ? `✅ ${u}'s Rebirths reset to 0${j.live ? ' (live)' : ''}` : '❌ ' + ((j && j.error) || 'failed'), ok);
   });
   bind('pv-give-stats-btn', async () => {
     const u = pvUser();
