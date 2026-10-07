@@ -252,16 +252,20 @@ const F5Panel = (() => {
           if (typeof saveNow === 'function') saveNow();
         }
       } else if (action === 'killenemy') {
-        if (window.App && App.enemy) {
+        if (window.App && App.enemy && App.state) {
           try {
-            App.enemy.hp = 0;
+            // Simple direct kill: advance stage, spawn fresh enemy, update UI.
+            // (Bypasses onKillEnemy which was throwing on the long reward chain.)
+            App.state.stage = (App.state.stage || 1) + 1;
             App.spawnPending = false;
-            if (typeof window.onKillEnemy === 'function') {
-              window.onKillEnemy();
-              toast('💀 onKillEnemy called');
+            if (typeof window.spawnNextEnemy === 'function') {
+              window.spawnNextEnemy();
             } else {
-              toast('❌ onKillEnemy is ' + typeof window.onKillEnemy);
+              App.enemy = null;
             }
+            if (window.UI && UI.updateHUD) UI.updateHUD(App.state, App.user);
+            if (typeof saveNow === 'function') saveNow();
+            toast('💀 Enemy killed — Stage ' + App.state.stage);
           } catch (err) {
             toast('❌ Kill error: ' + err.message);
             console.error('[GM Panel] Kill failed:', err);

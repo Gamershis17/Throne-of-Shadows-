@@ -65,6 +65,7 @@ window.Engine = Engine;
 window.UI = UI;
 window.saveNow = saveNow;
 window.onKillEnemy = onKillEnemy;
+window.spawnNextEnemy = spawnNextEnemy;
 
 // ---------------- server gate (maintenance / deploy windows) ----------------
 // Returns 'maintenance' (show the maintenance screen), 'ok', or
