@@ -516,9 +516,11 @@ export function renderGuildSection(container, api, myState) {
     wrap.innerHTML = `
       <div class="guild-hall">
         <div class="guild-hall-top">
-          <div class="guild-banner" aria-hidden="true">${bannerEmoji}</div>
+          ${guild.emblem_url
+            ? `<img class="guild-emblem" src="${esc(guild.emblem_url)}" alt="Guild emblem" onerror="this.outerHTML='<div class=&quot;guild-emblem-fallback&quot;>${esc((guild.tag || '?').slice(0, 2))}</div>'">`
+            : `<div class="guild-banner" aria-hidden="true">${bannerEmoji}</div>`}
           <div class="guild-hall-name">
-            <h3 class="guild-name">${esc(guild.name)} <span class="guild-tag">[${esc(guild.tag)}]</span></h3>
+            <h3 class="guild-name">${esc(guild.name)} <span class="guild-tag guild-tag-shine">[${esc(guild.tag)}]</span></h3>
             <div class="guild-lvl">⚜️ Level ${lvl} Guild · ${members.length} member${members.length === 1 ? '' : 's'} · you are ${esc((RANK_META[myRank] || RANK_META.member).label)}</div>
           </div>
         </div>
@@ -531,6 +533,11 @@ export function renderGuildSection(container, api, myState) {
           <span class="motd-text">${guild.motd ? esc(guild.motd) : '<i style="color:#6f5fa3">No message set.</i>'}</span>
           ${canManage ? '<div class="motd-edit"><button class="btn small" data-act="edit-motd">Edit</button></div>' : ''}
         </div>
+        ${canManage ? `<div class="guild-motd">
+          <span class="motd-label">🖼️ Custom Emblem (PNG)</span>
+          <span class="motd-text">${guild.emblem_url ? `<img src="${esc(guild.emblem_url)}" style="width:32px;height:32px;border-radius:8px;vertical-align:middle" onerror="this.style.display='none'"> <span class="muted small">Custom emblem set</span>` : '<i style="color:#6f5fa3">No custom emblem — using banner.</i>'}</span>
+          <div class="motd-edit"><button class="btn small" data-act="edit-emblem">Set Emblem URL</button>${guild.emblem_url ? ' <button class="btn small" data-act="clear-emblem">Remove</button>' : ''}</div>
+        </div>` : ''}
       </div>
       <div class="guild-tabs" role="tablist">
         ${['chat', 'hall', 'news', 'roster', 'perks', 'rewards', 'info'].map((t, i) =>
@@ -548,6 +555,31 @@ export function renderGuildSection(container, api, myState) {
         const mt = wrap.querySelector('.motd-text');
         if (mt) mt.innerHTML = res.motd ? esc(res.motd) : '<i style="color:#6f5fa3">No message set.</i>';
         note('Message of the Day updated.', 'guild-ok');
+      } catch (err) {
+        note(esc(err.message), 'guild-error');
+      }
+    });
+
+    listen('[data-act="edit-emblem"]', 'click', async () => {
+      const next = window.prompt('Custom emblem image URL (direct https:// link to PNG/JPG/GIF/WebP):', guild.emblem_url || '');
+      if (next === null) return;
+      try {
+        const res = await gpost(api, '/api/guilds/emblem', { url: next.trim() });
+        guild.emblem_url = res.emblemUrl;
+        note('Guild emblem updated.', 'guild-ok');
+        refresh();
+      } catch (err) {
+        note(esc(err.message), 'guild-error');
+      }
+    });
+
+    listen('[data-act="clear-emblem"]', 'click', async () => {
+      if (!window.confirm('Remove the custom emblem?')) return;
+      try {
+        await gpost(api, '/api/guilds/emblem', { url: '' });
+        guild.emblem_url = '';
+        note('Custom emblem removed.', 'guild-ok');
+        refresh();
       } catch (err) {
         note(esc(err.message), 'guild-error');
       }
