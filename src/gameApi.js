@@ -1244,6 +1244,12 @@ router.post(
     const body = (req.body && req.body.body) ? String(req.body.body).trim().slice(0, 2000) : '';
     const gold = Math.max(0, Math.floor(Number((req.body && req.body.gold) || 0)));
     const items = Array.isArray(req.body && req.body.items) ? req.body.items.slice(0, 12) : [];
+    // NOTE: player mail cannot attach items. No game UI sends items on this
+    // route (api.sendMail only sends to/subject/body/gold); the owner mailbox
+    // (/api/gm/mail/send) is the sanctioned item-distribution path. Accepting
+    // items here without deducting them from the sender's inventory would be
+    // an item-duplication exploit, so reject them outright.
+    if (items.length) return res.status(400).json({ error: 'Item attachments are not supported in player mail.' });
 
     if (!to) return res.status(400).json({ error: 'Recipient required.' });
     if (to.toLowerCase() === req.user.username.toLowerCase())
@@ -1267,7 +1273,8 @@ router.post(
       await saveStateBlob(req.user.id, blob);
     }
 
-    // TODO: remove items from sender inventory (needs item transfer logic)
+    // Items are rejected at the route level for player mail (dupe-exploit
+    // guard); the owner mailbox (/api/gm/mail/send) handles item grants.
 
     const msg = await sendMail(req.user.username, recipient.username, subject, body, gold, items);
     res.json({ ok: true, id: msg.id });
@@ -1438,24 +1445,16 @@ router.post(
     }
     await saveStateBlob(req.user.id, bblob);
 
-    // Send gold to seller via mail (95% after 5% AH cut, fee already taken at listing)
+    // Pay the seller via mail (single payout path, WoW style: the seller
+    // claims it from the mailbox, whether they are online or not).
+    // NOTE: do NOT also credit gold live here. The mail carries the gold,
+    // so a live credit would pay the seller twice (gold-dupe exploit).
     const sellerUser = await getUserByUsername(a.seller);
     if (sellerUser) {
       await sendMail('Auction House', a.seller,
         `Sold: ${a.item_name} x${qty}`,
-        `Your auction sold for ${price} gold.`,
+        `Your auction sold for ${price} gold. Claim it from your mailbox.`,
         price, []);
-      // Also credit live if seller is online
-      const { pushStateUpdate } = require('./broadcast');
-      if (pushStateUpdate) {
-        try {
-          const srow = await getStateRow(sellerUser.id);
-          const sblob = srow ? parseBlob(srow.state_json) : {};
-          sblob.gold = (sblob.gold || 0) + price;
-          await saveStateBlob(sellerUser.id, sblob);
-          pushStateUpdate(a.seller, { gold: sblob.gold });
-        } catch (e) {}
-      }
     }
 
     res.json({ ok: true, item: a.item_name, price });
