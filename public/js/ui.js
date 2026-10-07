@@ -4514,7 +4514,7 @@ export const UI = {
     if (!list) return;
     // Bag categories: tabs for All, Gear, Ores, Materials, Consumables, Treasure
     const activeCat = this._bagCat || 'all';
-    const cats = (window.Engine && Engine.BAG_CATEGORIES) || [{ id: 'all', name: 'All', emoji: '🎒' }];
+    const cats = (window.Engine && Engine.LOOT_TAB_CATEGORIES) || [{ id: 'all', name: 'All', emoji: '🎒' }];
 
     // Build tab bar
     let tabsHtml = '<div class="bag-tabs">';

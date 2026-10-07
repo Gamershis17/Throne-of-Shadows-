@@ -102,7 +102,7 @@ export function innRegen(hp, maxHp, dt) {
 
 // === BAG CATEGORIES ===
 // Every lootable item belongs to a category. The bag renders tabs for each.
-export const BAG_CATEGORIES = [
+export const LOOT_TAB_CATEGORIES = [
   { id: 'all',         name: 'All',         emoji: '🎒' },
   { id: 'gear',        name: 'Gear',        emoji: '⚔️' },
   { id: 'ores',        name: 'Ores',        emoji: '⛏️' },
@@ -110,7 +110,7 @@ export const BAG_CATEGORIES = [
   { id: 'consumables', name: 'Consumables', emoji: '🍖' },
   { id: 'treasure',    name: 'Treasure',    emoji: '💎' },
 ];
-export const BAG_CATEGORY_BY_ID = Object.fromEntries(BAG_CATEGORIES.map(c => [c.id, c]));
+export const LOOT_TAB_BY_ID = Object.fromEntries(LOOT_TAB_CATEGORIES.map(c => [c.id, c]));
 
 // === MONSTER LOOT ===
 // Materials that drop from enemies. weight = relative drop chance.
