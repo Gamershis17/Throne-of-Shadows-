@@ -3897,17 +3897,35 @@ function appendChatMessage(m) {
   const msgBox = document.getElementById('world-chat-messages');
   if (!msgBox) return;
   const div = document.createElement('div');
-  div.style.cssText = 'padding:4px 0;border-bottom:1px solid #1a1530;font-size:14px;transition:opacity 3s ease';
+  div.className = 'wc-msg';
+  div.style.cssText = 'padding:4px 0;border-bottom:1px solid #1a1530;font-size:14px;transition:opacity 30s linear';
   div.dataset.chatTime = new Date(m.created_at).getTime() || Date.now();
   const time = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  const gmBadge = m.is_gm ? `<span style="background:#ffd700;color:#000;font-weight:bold;padding:1px 6px;border-radius:4px;font-size:10px;margin-right:4px">&lt;GM&gt;</span>` : '';
-  div.innerHTML = `<span style="color:#9a8fb5;font-size:11px">${time}</span> ${gmBadge}<strong style="color:${m.is_gm ? '#ffd700' : '#f0c75e'}">${escapeHtml(m.username)}</strong>: <span style="color:#e8dfd0">${escapeHtml(m.message)}</span>`;
+  // Guild tag (shiny) — respects player's show/hide setting
+  const showTag = m.show_guild_tag !== 'false' && m.guild_tag;
+  const guildTag = showTag
+    ? `<span class="wc-guild-tag">${escapeHtml(m.guild_tag)}</span>` : '';
+  // GM badge beside the guild tag
+  const gmBadge = m.is_gm ? `<span class="wc-gm-badge">&lt;GM&gt;</span>` : '';
+  // Country flag — respects player's show/hide setting
+  // Simple flag emoji from country code (no import needed)
+  const showFlag = m.show_country_flag === 'true' && m.country;
+  let flagHtml = '';
+  if (showFlag) {
+    const code = String(m.country).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    if (code.length === 2) {
+      const flag = String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
+      flagHtml = `<span style="margin-right:4px">${flag}</span>`;
+    }
+  }
+  div.innerHTML = `<span style="color:#9a8fb5;font-size:11px">${time}</span> ${guildTag}${gmBadge}${flagHtml}<strong style="color:${m.is_gm ? '#ffd700' : '#f0c75e'}">${escapeHtml(m.username)}</strong>: <span style="color:#e8dfd0">${escapeHtml(m.message)}</span>`;
   msgBox.appendChild(div);
   // Keep only last 100 in DOM
   while (msgBox.children.length > 100) msgBox.removeChild(msgBox.firstChild);
 }
 
-// Fade out chat messages older than 90 seconds (gentle, non-breaking)
+// Smooth fade for world chat: messages gradually fade from 60s to 150s, then stay dim
+// (WoW-style would keep them solid; we do a gentle fade so the chat feels alive)
 setInterval(() => {
   try {
     const msgBox = document.getElementById('world-chat-messages');
@@ -3916,14 +3934,18 @@ setInterval(() => {
     for (const div of msgBox.children) {
       const t = Number(div.dataset.chatTime) || now;
       const ageSec = (now - t) / 1000;
-      if (ageSec > 90) {
-        div.style.opacity = '0.35';
-      } else if (ageSec > 60) {
-        div.style.opacity = '0.65';
+      if (ageSec < 60) {
+        div.style.opacity = '1';
+      } else if (ageSec < 150) {
+        // Smooth linear fade from 1.0 to 0.25 over 90 seconds
+        const progress = (ageSec - 60) / 90;
+        div.style.opacity = String(1 - (progress * 0.75));
+      } else {
+        div.style.opacity = '0.25';
       }
     }
   } catch { /* never break chat */ }
-}, 10000);
+}, 5000);
 
 async function pollWorldChat() {
   // Only poll if chat tab is active

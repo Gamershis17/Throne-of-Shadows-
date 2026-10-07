@@ -242,6 +242,7 @@ export const UI = {
       'redeem-input', 'redeem-btn',
       'set-dmgnums', 'set-motion', 'set-perf', 'set-sfx', 'set-music', 'set-music-track', 'set-follow-world', 'set-combat-music', 'set-music-vol', 'set-sfx-vol', 'set-notif-level', 'set-notif-death', 'set-atmosphere', 'set-weathersync',
       'set-notif-loot', 'set-notif-quest', 'logout-btn', 'modal-root', 'toast-root',
+      'set-guildtag', 'set-countryflag',
       'race-grid', 'class-grid', 'pet-grid', 'spec-grid', 'gm-back', 'meter-rows', 'total-dps',
       'share-btn', 'changelog-btn', 'changelog-badge', 'changelog-hud', 'changelog-badge-hud',
       'balance-log-btn', 'balance-log-badge', 'balance-log-hud', 'balance-log-badge-hud',
@@ -1005,6 +1006,11 @@ export const UI = {
     if (this.els['set-dmgnums']) this.els['set-dmgnums'].checked = !!this.settings.damageNumbers;
     if (this.els['set-motion']) this.els['set-motion'].checked = !!this.settings.reduceMotion;
     listen('set-dmgnums', 'change', (e) => this.saveSetting('damageNumbers', e.target.checked));
+    // Guild revamp: chat display toggles
+    if (this.els['set-guildtag']) this.els['set-guildtag'].checked = this.settings.showGuildTag !== false;
+    listen('set-guildtag', 'change', (e) => this.saveSetting('showGuildTag', e.target.checked));
+    if (this.els['set-countryflag']) this.els['set-countryflag'].checked = !!this.settings.showCountryFlag;
+    listen('set-countryflag', 'change', (e) => this.saveSetting('showCountryFlag', e.target.checked));
     listen('set-motion', 'change', (e) => {
       this.saveSetting('reduceMotion', e.target.checked);
       document.body.classList.toggle('reduce-motion', e.target.checked);
