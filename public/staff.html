@@ -359,6 +359,9 @@ body.staff-page {
         <button class="staff-tab-btn" data-tab="inspect">
           <span class="tab-icon">🔍</span> Player Inspector
         </button>
+        <button class="staff-tab-btn" data-tab="roles">
+          <span class="tab-icon">👑</span> Role Manager
+        </button>
       </aside>
 
       <!-- Main Content Area -->
@@ -456,6 +459,27 @@ body.staff-page {
               </div>
               <div id="mod-err" class="staff-err"></div>
             </div>
+          </div>
+        </section>
+
+        <!-- Tab 7: Role Manager (owner only) -->
+        <section id="tab-roles" class="staff-tab-pane hidden">
+          <div class="panel-box">
+            <h2 class="panel-title">👑 Role Manager</h2>
+            <p class="muted small">Give or remove staff roles. Owner only.</p>
+            <div class="filter-bar">
+              <input type="text" id="role-username" class="staff-input" placeholder="Username...">
+              <select id="role-select" class="staff-input">
+                <option value="gm">Game Master</option>
+                <option value="admin">Admin</option>
+                <option value="moderator">Moderator</option>
+                <option value="tester">Tester</option>
+                <option value="player">Player (remove staff)</option>
+              </select>
+              <button id="role-set-btn" class="staff-btn gold">Set Role</button>
+            </div>
+            <div id="role-result" class="margin-top"></div>
+            <div id="role-err" class="staff-err"></div>
           </div>
         </section>
 
