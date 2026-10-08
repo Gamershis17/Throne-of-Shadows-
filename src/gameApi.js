@@ -1407,7 +1407,7 @@ router.post(
   '/ah/buy/:id',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { getAuction, getStateRow, parseBlob, saveStateBlob, sendMail, getUserByUsername } = require('./db');
+    const { getAuction, getStateRow, saveStateBlob, sendMail, getUserByUsername } = require('./db');
     const auctionId = Math.floor(Number(req.params.id));
     const a = await getAuction(auctionId);
     if (!a || a.status !== 'active' || a.expires_at < Date.now()) {
