@@ -1374,20 +1374,46 @@ router.post(
     if (!itemName) return res.status(400).json({ error: 'Item name required.' });
     if (!unitPrice) return res.status(400).json({ error: 'Price required.' });
 
-    // Verify seller owns enough of the item and remove from inventory
+    // Verify seller owns enough of the item and remove from inventory.
+    // Items can live in three places: inventory (gear/consumables), mine.ores, materials.
     const srow = await getStateRow(req.user.id);
     const sblob = srow ? parseBlob(srow.state_json) : {};
     if (!Array.isArray(sblob.inventory)) sblob.inventory = [];
-    const owned = sblob.inventory.filter((i) => i && i.name === itemName);
-    if (owned.length < quantity) {
-      return res.status(400).json({ error: `You only have ${owned.length}x ${itemName}.` });
+    const itemKey = itemName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+    let owned = 0;
+    let source = 'inventory'; // inventory | ores | materials
+    // Check ores first (mine.ores: { copper: 1000 })
+    if (sblob.mine && sblob.mine.ores && typeof sblob.mine.ores[itemKey] === 'number') {
+      owned = Math.floor(sblob.mine.ores[itemKey]);
+      source = 'ores';
+    } else if (sblob.materials && typeof sblob.materials[itemKey] === 'number') {
+      owned = Math.floor(sblob.materials[itemKey]);
+      source = 'materials';
+    } else {
+      owned = sblob.inventory.filter((i) => i && i.name === itemName).length;
+      source = 'inventory';
     }
-    // Remove the listed quantity (oldest first)
-    let toRemove = quantity;
-    sblob.inventory = sblob.inventory.filter((i) => {
-      if (toRemove > 0 && i && i.name === itemName) { toRemove--; return false; }
-      return true;
-    });
+    if (owned < quantity) {
+      return res.status(400).json({ error: `You only have ${owned}x ${itemName}.` });
+    }
+    // Remove the listed quantity from the right place
+    let itemData = {};
+    if (source === 'ores') {
+      sblob.mine.ores[itemKey] -= quantity;
+      itemData = { oreId: itemKey };
+    } else if (source === 'materials') {
+      sblob.materials[itemKey] -= quantity;
+      itemData = { materialId: itemKey };
+    } else {
+      let toRemove = quantity;
+      const ownedItems = sblob.inventory.filter((i) => i && i.name === itemName);
+      if (ownedItems[0] && ownedItems[0].stats) itemData = { stats: ownedItems[0].stats };
+      sblob.inventory = sblob.inventory.filter((i) => {
+        if (toRemove > 0 && i && i.name === itemName) { toRemove--; return false; }
+        return true;
+      });
+    }
     // 5% listing fee
     const fee = Math.ceil((unitPrice * quantity) * 0.05);
     if ((sblob.gold || 0) < fee) {
@@ -1396,8 +1422,7 @@ router.post(
     sblob.gold -= fee;
     await saveState(req.user.id, sblob);
 
-    // Store the removed items' data for the buyer
-    const itemData = owned[0] && owned[0].stats ? { stats: owned[0].stats } : {};
+    // itemData was set above based on source
     const a = await createAuction(req.user.username, itemName, itemData, quantity, unitPrice, durationHours);
     res.json({ ok: true, id: a.id, fee });
   })
@@ -1431,17 +1456,27 @@ router.post(
 
     // Deduct gold from buyer
     bblob.gold -= price;
-    // Grant item(s) to buyer inventory
-    if (!Array.isArray(bblob.inventory)) bblob.inventory = [];
-    let itemStats = {};
-    try { itemStats = JSON.parse(a.item_data || '{}').stats || {}; } catch (e) {}
-    for (let i = 0; i < qty; i++) {
-      bblob.inventory.push({
-        id: 'ah-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-        name: String(a.item_name).slice(0, 60),
-        stats: itemStats,
-        fromAH: true,
-      });
+    // Grant item(s) to buyer — ores go to mine.ores, materials to materials, else inventory
+    let itemMeta = {};
+    try { itemMeta = JSON.parse(a.item_data || '{}'); } catch (e) {}
+    if (itemMeta.oreId) {
+      bblob.mine = bblob.mine || {};
+      bblob.mine.ores = bblob.mine.ores || {};
+      bblob.mine.ores[itemMeta.oreId] = (bblob.mine.ores[itemMeta.oreId] || 0) + qty;
+    } else if (itemMeta.materialId) {
+      bblob.materials = bblob.materials || {};
+      bblob.materials[itemMeta.materialId] = (bblob.materials[itemMeta.materialId] || 0) + qty;
+    } else {
+      if (!Array.isArray(bblob.inventory)) bblob.inventory = [];
+      const itemStats = itemMeta.stats || {};
+      for (let i = 0; i < qty; i++) {
+        bblob.inventory.push({
+          id: 'ah-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+          name: String(a.item_name).slice(0, 60),
+          stats: itemStats,
+          fromAH: true,
+        });
+      }
     }
     await saveState(req.user.id, bblob);
 
