@@ -3,7 +3,7 @@
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v=20261007b';
+import * as Engine from './engine.js?v=20261008a';
 import { Audio } from './audio.js?v=v20261006a';
 import { api } from './api.js?v=20261007b';
 
@@ -4604,7 +4604,9 @@ export const UI = {
         const def = Engine.getLootItemById ? Engine.getLootItemById(id) : null;
         const count = (state.lootBag && state.lootBag[id]) || 0;
         if (!def || count <= 0) return;
-        const gold = (def.goldValue || 1) * count;
+        // Scale sell value with stage so treasure stays relevant
+        const stageMult = 1 + (state.stage || 1) / 20;
+        const gold = Math.round((def.goldValue || 1) * stageMult) * count;
         delete state.lootBag[id];
         if (Engine.addGold) Engine.addGold(state, gold);
         this.toast('Sold ' + count + 'x ' + def.name + ' (+' + gold + ' gold)!', 'success');

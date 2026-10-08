@@ -14,8 +14,8 @@
 // be omitted entirely — this module falls back to same-origin fetch.
 // ============================================================
 import { Audio } from './audio.js?v=v20261006a';
-import { setGuildPerks } from './engine.js?v=20261007b';
-import { UI } from './ui.js?v=20261007b';
+import { setGuildPerks } from './engine.js?v=20261008a';
+import { UI } from './ui.js?v=20261008a';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({

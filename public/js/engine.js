@@ -121,7 +121,7 @@ export const MONSTER_MATERIALS = [
   { id: 'crystal_fang',  name: 'Crystal Fang',  emoji: '🦷', category: 'materials', rarity: 'uncommon',  goldValue: 35,  weight: 10, desc: 'A fang hardened into crystal.' },
   { id: 'ember_heart',   name: 'Ember Heart',   emoji: '❤️‍🔥', category: 'materials', rarity: 'rare',   goldValue: 80,  weight: 6,  desc: 'Still warm. Still beating.' },
   { id: 'void_essence',  name: 'Void Essence',  emoji: '🌀', category: 'materials', rarity: 'epic',      goldValue: 200, weight: 3,  desc: 'Condensed nothingness. Valuable.' },
-  { id: 'dragon_scale',  name: 'Dragon Scale',  emoji: '🐉', category: 'materials', rarity: 'legendary', goldValue: 500, weight: 1,  desc: 'A scale from a true dragon. Priceless.' },
+  { id: 'dragon_scale',  name: 'Dragon Scale',  emoji: '🐉', category: 'materials', rarity: 'legendary', goldValue: 500, weight: 3,  desc: 'A scale from a true dragon. Priceless.' },
 ];
 export const MATERIAL_BY_ID = Object.fromEntries(MONSTER_MATERIALS.map(m => [m.id, m]));
 
@@ -885,7 +885,11 @@ export const rebirthXpMult = (rebirthCount) =>
   Math.pow(1.35, Math.min(MAX_EFFECTIVE_REBIRTHS, Math.max(0, Math.floor(rebirthCount || 0))));
 export const xpForLevel = (level, rebirthCount = 0) =>
   Math.max(1, Math.round(xpForLevelBase(level) * rebirthXpMult(rebirthCount)));
-export const xpForKill = (stage) => Math.max(1, Math.round(10 * Math.pow(1.12, stage)));
+export const xpForKill = (stage) => {
+  const base = 10 * Math.pow(1.12, Math.min(stage, 150));
+  const late = Math.pow(1.18, Math.max(0, stage - 150));
+  return Math.max(1, Math.round(base * late));
+};
 // Level-system rework: no single kill can grant more than this fraction of the
 // XP needed for the current level. Late-game kill XP outran level requirements
 // (nearly a full level per kill); this caps the pace at 20 kills/level minimum.
@@ -2688,8 +2692,10 @@ export function craftItem(state, recipeId) {
   const check = canCraftRecipe(state, recipeId);
   if (!check.ok) return { ok: false, error: 'Missing: ' + check.missing.join(', ') };
   const recipe = check.recipe;
-  // Deduct
-  state.gold = (state.gold || 0) - recipe.gold;
+  // Deduct (gold cost scales with stage so it stays meaningful)
+  const stageMult = 1 + (state.stage || 1) / 10;
+  const goldCost = Math.round(recipe.gold * stageMult);
+  state.gold = (state.gold || 0) - goldCost;
   for (const [matId, need] of Object.entries(recipe.cost)) {
     if (matId.startsWith('ore:')) {
       const oreId = matId.slice(4);

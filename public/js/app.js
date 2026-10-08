@@ -5,8 +5,8 @@ import { api } from './api.js?v=20261007b';
 // Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
 // the coordinator must add one (this module is new).
 import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261007b';
-import * as Engine from './engine.js?v=20261007b';
-import { UI, esc, formatNum } from './ui.js?v=20261007b';
+import * as Engine from './engine.js?v=20261008a';
+import { UI, esc, formatNum } from './ui.js?v=20261008a';
 import { Auth } from './auth.js?v=20261007b';
 import { GM } from './gm.js?v=20261007b';
 
