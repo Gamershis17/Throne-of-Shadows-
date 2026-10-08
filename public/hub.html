@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Throne of Shadows — Community Hub</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --panel: rgba(18, 18, 26, 0.92);
+      --gold: #eab308;
+      --gold-dim: rgba(234, 179, 8, 0.25);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --green: #4ade80;
+      --red: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+    header {
+      text-align: center; padding: 1.5rem 0 1rem;
+      border-bottom: 1px solid var(--gold-dim); margin-bottom: 1rem;
+    }
+    header h1 { color: var(--gold); margin: 0 0 0.25rem; font-size: 1.6rem; }
+    header p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+    .back { display: inline-block; margin-bottom: 0.75rem; color: var(--gold); text-decoration: none; font-size: 0.9rem; }
+    .card {
+      background: var(--panel); border: 1px solid var(--gold-dim);
+      border-radius: 12px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .card h2 { margin: 0 0 0.75rem; font-size: 1.1rem; color: var(--gold); }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .stat {
+      background: rgba(234,179,8,0.06); border: 1px solid var(--gold-dim);
+      border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center;
+    }
+    .stat .v { font-size: 1.25rem; font-weight: 700; color: var(--gold); }
+    .stat .l { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+    .tabs { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .tab-btn {
+      flex: 1; min-width: 80px; padding: 0.55rem 0.5rem;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--gold-dim);
+      color: var(--text); border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab-btn.active { background: rgba(234,179,8,0.18); border-color: var(--gold); color: var(--gold); }
+    .lb-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .rank {
+      width: 1.8rem; height: 1.8rem; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.06); font-weight: 700; font-size: 0.8rem; flex-shrink: 0;
+    }
+    .rank.r1 { background: #ffd700; color: #000; }
+    .rank.r2 { background: #c0c0c0; color: #000; }
+    .rank.r3 { background: #cd7f32; color: #000; }
+    .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-val { color: var(--gold); font-weight: 600; font-size: 0.85rem; }
+    .lb-sub { color: var(--muted); font-size: 0.72rem; }
+    .event-row {
+      display: flex; gap: 0.6rem; align-items: flex-start;
+      padding: 0.55rem 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-emoji { font-size: 1.5rem; flex-shrink: 0; }
+    .event-body { flex: 1; }
+    .event-name { font-weight: 600; font-size: 0.92rem; }
+    .event-dates { color: var(--muted); font-size: 0.78rem; }
+    .event-fx { color: var(--green); font-size: 0.78rem; margin-top: 0.15rem; }
+    .now-badge {
+      background: var(--green); color: #000; font-size: 0.68rem; font-weight: 700;
+      padding: 0.15rem 0.5rem; border-radius: 999px; flex-shrink: 0; margin-top: 0.2rem;
+    }
+    .pn-title { font-weight: 700; font-size: 0.95rem; color: var(--gold); }
+    .pn-date { color: var(--muted); font-size: 0.75rem; margin-bottom: 0.35rem; }
+    .pn-change { font-size: 0.85rem; color: var(--text); padding: 0.2rem 0; border-bottom: 1px dotted rgba(255,255,255,0.08); }
+    .pn-block { margin-bottom: 1rem; }
+    .pn-block:last-child { margin-bottom: 0; }
+    .status-dot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; margin-right: 0.4em; }
+    .status-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.off { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .owner-only { display: none; }
+    body.is-owner .owner-only { display: block; }
+    .act-row { font-size: 0.82rem; padding: 0.4rem 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .act-row:last-child { border-bottom: none; }
+    .muted { color: var(--muted); }
+    .small { font-size: 0.8rem; }
+    .loading { color: var(--muted); text-align: center; padding: 1rem; }
+    .err { color: var(--red); text-align: center; padding: 1rem; }
+    @media (min-width: 640px) {
+      header h1 { font-size: 2rem; }
+      .stat .v { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏰 Throne of Shadows</h1>
+    <p>Community Hub</p>
+  </header>
+  <a class="back" href="/">← Back to the game</a>
+
+  <!-- Server status -->
+  <div class="card" id="status-card">
+    <h2>📡 Server Status</h2>
+    <div id="status-body" class="loading">Checking…</div>
+  </div>
+
+  <!-- Live stats -->
+  <div class="card">
+    <h2>📊 Live Stats</h2>
+    <div class="stat-grid" id="stats-body">
+      <div class="stat"><div class="v">—</div><div class="l">Online</div></div>
+      <div class="stat"><div class="v">—</div><div class="l">Accounts</div></div>
+      <div class="stat"><div class="v">—</div><div class="l">AH Listings</div></div>
+    </div>
+  </div>
+
+  <!-- Leaderboards -->
+  <div class="card">
+    <h2>🏆 Leaderboards</h2>
+    <div class="tabs">
+      <button class="tab-btn active" data-lb="level">Level</button>
+      <button class="tab-btn" data-lb="stage">Stage</button>
+      <button class="tab-btn" data-lb="bosses">Bosses</button>
+    </div>
+    <div id="lb-body" class="loading">Loading…</div>
+  </div>
+
+  <!-- Events -->
+  <div class="card">
+    <h2>🎄 Events</h2>
+    <div id="events-body" class="loading">Loading…</div>
+  </div>
+
+  <!-- Patch notes -->
+  <div class="card">
+    <h2>📜 Patch Notes</h2>
+    <div id="pn-body" class="loading">Loading…</div>
+  </div>
+
+  <!-- Owner: team status -->
+  <div class="card owner-only">
+    <h2>🛠️ Team Status</h2>
+    <div class="act-row"><b>Bug Hunter</b> — <span class="muted">idle</span></div>
+    <div class="act-row"><b>Balance Analyst</b> — <span class="muted">idle</span></div>
+    <div class="act-row"><b>Rework Scout</b> — <span class="muted">idle</span></div>
+    <div class="act-row"><b>Hub Builder</b> — <span class="muted">building this page</span></div>
+    <p class="muted small">Helpers report to Amber. Nothing ships without your word.</p>
+  </div>
+
+  <!-- Owner: recent activity -->
+  <div class="card owner-only">
+    <h2>📰 Recent Activity</h2>
+    <h3 class="small" style="color:var(--gold)">Recent Auction Listings</h3>
+    <div id="act-ah" class="loading">Loading…</div>
+    <h3 class="small" style="color:var(--gold); margin-top:0.75rem">New Accounts</h3>
+    <div id="act-users" class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) {
+    n = Math.floor(Number(n) || 0);
+    if (n < 1000) return String(n);
+    const u = ['K', 'M', 'B', 'T', 'Q'];
+    let i = -1, v = n;
+    while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+    return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + u[i];
+  }
+  async function get(url) {
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  // --- server status (existing endpoint) ---
+  get('/api/status').then(function (d) {
+    const on = !d.maintenance;
+    $('status-body').innerHTML =
+      '<div><span class="status-dot ' + (on ? 'on' : 'off') + '"></span>' +
+      (on ? '<b>Online</b>' : '<b style="color:var(--red)">Maintenance</b>') + '</div>' +
+      (d.message ? '<div class="muted small" style="margin-top:0.3rem">' + esc(d.message) + '</div>' : '') +
+      (d.commit ? '<div class="muted small" style="margin-top:0.3rem">Build: <code>' + esc(String(d.commit).slice(0, 8)) + '</code></div>' : '');
+  }).catch(function () { $('status-body').innerHTML = '<div class="err">Could not reach the server.</div>'; });
+
+  // --- live stats ---
+  get('/api/hub/stats').then(function (d) {
+    $('stats-body').innerHTML =
+      '<div class="stat"><div class="v">' + fmt(d.online) + '</div><div class="l">Online</div></div>' +
+      '<div class="stat"><div class="v">' + fmt(d.totalAccounts) + '</div><div class="l">Accounts</div></div>' +
+      '<div class="stat"><div class="v">' + fmt(d.ahActive) + '</div><div class="l">AH Listings</div></div>';
+  }).catch(function () { $('stats-body').innerHTML = '<div class="err">Stats unavailable.</div>'; });
+
+  // --- leaderboards ---
+  const lbLabels = { level: 'Level', stage: 'Stage', bosses: 'Bosses' };
+  function loadLB(by) {
+    $('lb-body').innerHTML = '<div class="loading">Loading…</div>';
+    get('/api/hub/leaderboard?by=' + encodeURIComponent(by) + '&limit=10').then(function (d) {
+      if (!d.entries.length) { $('lb-body').innerHTML = '<div class="muted">No entries yet.</div>'; return; }
+      $('lb-body').innerHTML = d.entries.map(function (e) {
+        const rc = e.rank <= 3 ? ' r' + e.rank : '';
+        const val = by === 'level' ? 'Lv ' + fmt(e.level)
+          : by === 'stage' ? 'Stage ' + fmt(e.stage)
+          : fmt(e.bosses) + ' kills';
+        const sub = (e.guild ? '[' + esc(e.guild) + '] ' : '') +
+          'Lv ' + fmt(e.level) + ' · ' + fmt(e.gold) + ' gold';
+        return '<div class="lb-row"><div class="rank' + rc + '">' + e.rank + '</div>' +
+          '<div class="lb-name">' + esc(e.username) + '<div class="lb-sub">' + sub + '</div></div>' +
+          '<div class="lb-val">' + esc(val) + '</div></div>';
+      }).join('');
+    }).catch(function () { $('lb-body').innerHTML = '<div class="err">Leaderboard unavailable.</div>'; });
+  }
+  document.querySelectorAll('[data-lb]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('[data-lb]').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      loadLB(btn.getAttribute('data-lb'));
+    });
+  });
+  loadLB('level');
+
+  // --- events ---
+  get('/api/hub/holidays').then(function (d) {
+    $('events-body').innerHTML = d.events.map(function (e) {
+      return '<div class="event-row"><div class="event-emoji">' + esc(e.emoji) + '</div>' +
+        '<div class="event-body"><div class="event-name">' + esc(e.name) + '</div>' +
+        '<div class="event-dates">' + esc(e.label) + '</div>' +
+        '<div class="event-fx">' + esc(e.effect) + '</div></div>' +
+        (e.active ? '<span class="now-badge">NOW</span>' : '') + '</div>';
+    }).join('');
+  }).catch(function () { $('events-body').innerHTML = '<div class="err">Events unavailable.</div>'; });
+
+  // --- patch notes ---
+  get('/api/hub/changelog').then(function (d) {
+    if (!d.entries.length) { $('pn-body').innerHTML = '<div class="muted">No patch notes yet.</div>'; return; }
+    $('pn-body').innerHTML = d.entries.map(function (e) {
+      return '<div class="pn-block"><div class="pn-title">' + esc(e.title) + '</div>' +
+        '<div class="pn-date">' + esc([e.date, e.time].filter(Boolean).join(' · ')) + '</div>' +
+        e.changes.map(function (c) { return '<div class="pn-change">' + esc(c) + '</div>'; }).join('') +
+        '</div>';
+    }).join('');
+  }).catch(function () { $('pn-body').innerHTML = '<div class="err">Patch notes unavailable.</div>'; });
+
+  // --- owner gate + activity ---
+  get('/api/hub/me').then(function (d) {
+    if (d.role === 'owner') {
+      document.body.classList.add('is-owner');
+      return get('/api/hub/activity').then(function (a) {
+        $('act-ah').innerHTML = a.recentAuctions.length ? a.recentAuctions.map(function (x) {
+          return '<div class="act-row">' + esc(x.seller) + ' listed <b>' + esc(x.item) + '</b> x' + x.qty +
+            ' — ' + fmt(x.price) + 'g <span class="muted">(' + esc(x.status) + ')</span></div>';
+        }).join('') : '<div class="muted">No auctions yet.</div>';
+        $('act-users').innerHTML = a.newAccounts.length ? a.newAccounts.map(function (u) {
+          return '<div class="act-row">' + esc(u.username) + ' <span class="muted">(' + esc(u.role) + ')</span></div>';
+        }).join('') : '<div class="muted">No accounts yet.</div>';
+      }).catch(function () {
+        $('act-ah').innerHTML = '<div class="err">Unavailable.</div>';
+        $('act-users').innerHTML = '<div class="err">Unavailable.</div>';
+      });
+    }
+  }).catch(function () { /* not logged in — owner sections stay hidden */ });
+})();
+</script>
+</body>
+</html>
