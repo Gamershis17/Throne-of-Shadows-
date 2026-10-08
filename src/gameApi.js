@@ -1269,8 +1269,8 @@ router.post(
       const curGold = blob.gold || 0;
       if (curGold < totalCost) return res.status(400).json({ error: 'Not enough gold.' });
       blob.gold = curGold - totalCost;
-      const { saveStateBlob } = require('./db');
-      await saveStateBlob(req.user.id, blob);
+      const { saveState } = require('./db');
+      await saveState(req.user.id, blob);
     }
 
     // Items are rejected at the route level for player mail (dupe-exploit
@@ -1295,7 +1295,7 @@ router.post(
   '/mail/:id/claim',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { claimMail, getStateRow, saveStateBlob } = require('./db');
+    const { claimMail, getStateRow, saveState } = require('./db');
     const result = await claimMail(Math.floor(Number(req.params.id)), req.user.username);
     if (!result) return res.status(404).json({ error: 'Mail not found.' });
     if (result.alreadyClaimed) return res.status(400).json({ error: 'Already claimed.' });
@@ -1323,7 +1323,7 @@ router.post(
         }
       }
     }
-    await saveStateBlob(req.user.id, blob);
+    await saveState(req.user.id, blob);
     res.json({ ok: true, gold: Number(m.gold), items: m.items });
   })
 );
@@ -1364,7 +1364,7 @@ router.post(
   '/ah/list',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { createAuction, getStateRow, saveStateBlob } = require('./db');
+    const { createAuction, getStateRow, saveState } = require('./db');
     const itemName = (req.body && req.body.itemName) ? String(req.body.itemName).trim().slice(0, 100) : '';
     const quantity = Math.max(1, Math.min(999, Math.floor(Number((req.body && req.body.quantity) || 1))));
     const unitPrice = Math.max(1, Math.floor(Number((req.body && req.body.unitPrice) || 0)));
@@ -1394,7 +1394,7 @@ router.post(
       return res.status(400).json({ error: `Listing fee is ${fee} gold.` });
     }
     sblob.gold -= fee;
-    await saveStateBlob(req.user.id, sblob);
+    await saveState(req.user.id, sblob);
 
     // Store the removed items' data for the buyer
     const itemData = owned[0] && owned[0].stats ? { stats: owned[0].stats } : {};
@@ -1407,7 +1407,7 @@ router.post(
   '/ah/buy/:id',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { getAuction, getStateRow, saveStateBlob, sendMail, getUserByUsername } = require('./db');
+    const { getAuction, getStateRow, saveState, sendMail, getUserByUsername } = require('./db');
     const auctionId = Math.floor(Number(req.params.id));
     const a = await getAuction(auctionId);
     if (!a || a.status !== 'active' || a.expires_at < Date.now()) {
@@ -1443,7 +1443,7 @@ router.post(
         fromAH: true,
       });
     }
-    await saveStateBlob(req.user.id, bblob);
+    await saveState(req.user.id, bblob);
 
     // Pay the seller via mail (single payout path, WoW style: the seller
     // claims it from the mailbox, whether they are online or not).
