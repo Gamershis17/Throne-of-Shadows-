@@ -1713,7 +1713,8 @@ async function buyoutAuction(id, buyer) {
   const a = await getAuction(id);
   if (!a || a.status !== 'active' || a.expires_at < Date.now()) return { error: 'Auction not available.' };
   if (a.seller === buyer) return { error: 'Cannot buy your own auction.' };
-  await pool.query(`UPDATE auctions SET status = 'sold' WHERE id = $1`, [id]);
+  const upd = await pool.query(`UPDATE auctions SET status = 'sold' WHERE id = $1 AND status = 'active'`, [id]);
+  if (upd.rowCount === 0) return { error: 'Auction not available.' };
   return { auction: a };
 }
 
@@ -1771,7 +1772,8 @@ async function claimMail(mailId, username) {
   if (!rows.length) return null;
   const m = rows[0];
   if (m.claimed) return { alreadyClaimed: true, mail: m };
-  await pool.query('UPDATE mail SET claimed = TRUE, is_read = TRUE WHERE id = $1', [mailId]);
+  const upd = await pool.query('UPDATE mail SET claimed = TRUE, is_read = TRUE WHERE id = $1 AND claimed = FALSE', [mailId]);
+  if (upd.rowCount === 0) return { alreadyClaimed: true, mail: m };
   return { mail: m };
 }
 
