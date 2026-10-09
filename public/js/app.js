@@ -8,12 +8,12 @@ import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } f
 import * as Engine from './engine.js?v=20261008a';
 import { UI, esc, formatNum } from './ui.js?v=20261008a';
 import { Auth } from './auth.js?v=20261007b';
-import { GM } from './gm.js?v=20261007b';
+import { GM } from './gm.js?v=20261008a';
 
-import { Raid } from './raid.js?v=20261007b';
-import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261007b';
+import { Raid } from './raid.js?v=20261008a';
+import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261008a';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
-import { Realm } from './realm.js?v=20261007b';
+import { Realm } from './realm.js?v=20261008a';
 import { Audio } from './audio.js?v=v20261006a';
 
 const TICK_MS = 250;
@@ -1548,7 +1548,7 @@ function onKillEnemy() {
     if (UI.activeTab === 'pets') UI.renderPetsTab(s);
   }
   // Material/consumable/treasure drops (new loot categories)
-  const matDrops = Engine.rollMaterialDrops(isBoss);
+  const matDrops = Engine.rollMaterialDrops(enemy.boss);
   for (const drop of matDrops) {
     Engine.addLootDrop(s, drop);
     const countTxt = drop.count > 1 ? ` ×${drop.count}` : '';
