@@ -87,9 +87,12 @@ const HOLIDAYS = window.__PREVIEW ? [
 export function formatNum(n) {
   n = Math.floor(Number(n) || 0);
   if (n < 1000) return String(n);
-  const units = ['K', 'M', 'B', 'T', 'Q', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad'];
+  const units = ['K', 'M', 'B', 'T', 'Q', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad',
+                 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg'];
   let u = -1, v = n;
   while (v >= 1000 && u < units.length - 1) { v /= 1000; u++; }
+  // Past the largest suffix: fall back to scientific notation.
+  if (v >= 1000) return n.toExponential(1).replace('e+', 'e');
   return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + units[u];
 }
 
