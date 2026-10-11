@@ -467,10 +467,12 @@ export const UI = {
           st.id = 'preview-bag-css';
           st.textContent = [
             '.bag-head{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:10px;font-size:1.05rem}',
-            '.bag-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}',
-            '.bag-slot{position:relative;aspect-ratio:1/1;background:linear-gradient(145deg,#1a1a22,#0d0d12);border:1px solid #3a3a48;border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}',
+            '.bag-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}',
+            '.bag-slot{position:relative;min-height:72px;background:linear-gradient(145deg,#1a1a22,#0d0d12);border:1px solid #3a3a48;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}',
             '.bag-slot-emoji{font-size:1.5rem;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}',
-            '.bag-slot-count{position:absolute;right:4px;bottom:2px;font-size:.72rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}',
+            '.bag-slot-count{position:absolute;right:4px;top:2px;font-size:.72rem;font-weight:700;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000}',
+            '.bag-slot-actions{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;justify-content:center}',
+            '.bag-slot-actions .btn{font-size:10px;padding:2px 6px;white-space:nowrap}',
           ].join('');
           document.head.appendChild(st);
         }
