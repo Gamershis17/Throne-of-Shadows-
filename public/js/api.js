@@ -65,8 +65,15 @@ async function request(path, options = {}) {
   return data;
 }
 
+// Non-finite numbers (Infinity/NaN) can't survive JSON — they serialize as
+// null, which would silently corrupt a save (e.g. an uncapped Infinity gold
+// balance). Send the max finite double instead; the server treats it as the
+// wire-safe representation of "infinite".
+const finiteNumbers = (key, value) =>
+  (typeof value === 'number' && !Number.isFinite(value) ? Number.MAX_VALUE : value);
+
 const post = (path, body) =>
-  request(path, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body || {}) });
+  request(path, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body || {}, finiteNumbers) });
 
 export const api = {
   // Auth
@@ -98,7 +105,7 @@ export const api = {
   // Best-effort save during page unload (sendBeacon includes same-origin cookies).
   saveStateBeacon: (state) => {
     try {
-      const blob = new Blob([JSON.stringify({ state })], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ state }, finiteNumbers)], { type: 'application/json' });
       return navigator.sendBeacon('/api/state', blob);
     } catch {
       return false;

@@ -937,15 +937,18 @@ export function eventGoldMult() { const b = eventBuff(); return b ? b.goldMult :
 
 // Adds gold, clamped to the server gold cap. The infinite-gold perk bypasses
 // the cap entirely. Returns the amount actually added.
+// Gold never becomes Infinity in memory: JSON can't carry Infinity (it
+// becomes null and would corrupt the save), so balances stop at the max
+// finite double, which the UI renders as ∞.
 export function addGold(s, amount) {
   if (!Number.isFinite(amount) || amount <= 0) return 0;
   // GM gold buff: multiply gains
   amount = amount * getBuffMult(s, 'gold');
   const cur = Math.max(0, Number(s.gold) || 0);
-  if (s.infGold === true) { s.gold = cur + amount; return amount; }
+  if (s.infGold === true) { s.gold = Math.min(cur + amount, Number.MAX_VALUE); return amount; }
   const room = Math.max(0, GOLD_CAP - cur);
   const added = Math.min(amount, room);
-  s.gold = cur + added;
+  s.gold = Math.min(cur + added, Number.MAX_VALUE);
   return added;
 }
 

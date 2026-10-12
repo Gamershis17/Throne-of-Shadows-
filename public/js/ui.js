@@ -86,6 +86,9 @@ const HOLIDAYS = window.__PREVIEW ? [
 
 export function formatNum(n) {
   n = Math.floor(Number(n) || 0);
+  // The max finite double is the wire-safe stand-in for an "infinite"
+  // balance (JSON can't carry Infinity), so render it as ∞.
+  if (n >= Number.MAX_VALUE) return '∞';
   if (n < 1000) return String(n);
   const units = ['K', 'M', 'B', 'T', 'Q', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad',
                  'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg'];
