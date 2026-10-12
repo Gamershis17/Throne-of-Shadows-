@@ -140,6 +140,11 @@ function sanitizeStateBlob(blob) {
   if (size > MAX_BLOB_BYTES) {
     return { ok: false, error: 'State too large (max 1 MB).' };
   }
+  // Gold is uncapped: a literal Infinity balance (possible in-process before
+  // the client clamps it for the wire) means "as much as representable".
+  // Convert it to the max finite double first, otherwise sanitizeNumbers
+  // zeroes it and the save silently wipes the player's gold.
+  if (blob.gold === Infinity) blob.gold = Number.MAX_VALUE;
   sanitizeNumbers(blob);
   for (const [field, [min, max]] of Object.entries(CLAMPED_FIELDS)) {
     if (typeof blob[field] === 'number') {
