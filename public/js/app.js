@@ -1479,6 +1479,37 @@ function onKillEnemy() {
   // Tower progression: clearing a floor advances the tower, milestones grant rewards.
   if (isTowerBoss) {
     Engine.ensureTowerState(s);
+    // Boss Rush: advance to the next rush boss instead of normal tower flow.
+    if (s.bossRush && s.bossRush.active) {
+      const advance = Engine.bossRushAdvance(s);
+      if (advance && advance.complete) {
+        const timeStr = Engine.formatBossRushTime(advance.timeMs);
+        UI.toast(`🏆 BOSS RUSH COMPLETE! Time: ${timeStr}${advance.isBest ? ' — NEW BEST!' : ''}`, 'success');
+        UI.combatLog(`🏆 Boss Rush complete in ${timeStr}!`, 'boss');
+      } else if (advance && !advance.complete) {
+        UI.toast(`⚔️ Boss Rush: Floor ${advance.floor} next!`, 'info');
+      }
+      // Spawn the next rush boss (or finish).
+      const next = Engine.bossRushNext(s);
+      if (next && !next.complete) {
+        App.enemy = Engine.towerEnemyFor(next.floor, s.stage);
+        App.enemyTimer = 0;
+        App.heroTimer = 0;
+        App.enemySlow = null;
+        UI.setEnemy(App.enemy);
+        UI.renderBattle(s);
+        UI.updateHUD(s, App.user);
+        saveNow();
+        return;
+      } else {
+        // Rush complete — spawn normal tower enemy.
+        spawnEnemy();
+        UI.renderBattle(s);
+        UI.updateHUD(s, App.user);
+        saveNow();
+        return;
+      }
+    }
     const cleared = enemy.towerFloor;
     if (cleared > s.tower.floor) {
       s.tower.floor = cleared;
@@ -3414,12 +3445,23 @@ function doBossRushStart() {
   if (!s) return;
   Engine.startBossRush(s);
   UI.toast('⚔️ Boss Rush started! Defeat all 5 bosses as fast as you can!', 'success');
-  UI.renderTowerPanel(s);
-  // Switch to tower mode and spawn the first boss.
+  // Switch to tower mode and spawn the first rush boss (floor 10).
   if (s.mode !== 'tower') {
-    // Use existing mode switch logic
-    if (typeof switchMode === 'function') switchMode('tower');
+    setMode('tower');
   }
+  const next = Engine.bossRushNext(s);
+  if (next && !next.complete) {
+    Engine.ensureTowerState(s);
+    App.enemy = Engine.towerEnemyFor(next.floor, s.stage);
+    App.enemyTimer = 0;
+    App.heroTimer = 0;
+    App.enemySlow = null;
+    App.companionTimers = {};
+    App.healerTimers = {};
+    UI.setEnemy(App.enemy);
+    UI.renderBattle(s);
+  }
+  UI.renderTowerPanel(s);
   saveNow();
 }
 
