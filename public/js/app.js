@@ -1703,9 +1703,20 @@ function onDefeat() {
     saveNow();
     return;
   }
+  // Boss Rush: death ends the run (standard time-attack behavior).
+  // Without this, respawn() would spawn a normal tower enemy and killing it
+  // would count as rush progress — a free boss skip.
+  if (s.bossRush && s.bossRush.active) {
+    s.bossRush.active = false;
+    UI.combatLog(`💀 Boss Rush failed — death ends the run.`, 'death');
+    UI.toast(`💀 Boss Rush failed! Death ends the run. Start a new one when ready!`, 'error');
+    saveNow();
+  }
   // Mercy rule: dying 3x in a row to the same boss retreats you 5 stages,
   // so a wall becomes a farming trip instead of an endless death loop.
-  if (App.enemy && App.enemy.boss) {
+  // Does NOT apply in tower mode — tower has its own retry loop and uses
+  // fixed stage-100 scaling, so retreating world stage would just lose progress.
+  if (App.enemy && App.enemy.boss && s.mode !== 'tower') {
     if (App.lastDeathStage === s.stage) App.deathStreak += 1;
     else { App.lastDeathStage = s.stage; App.deathStreak = 1; }
     if (App.deathStreak >= 3) {
@@ -1718,6 +1729,8 @@ function onDefeat() {
   } else {
     App.deathStreak = 0;
   }
+  // Tower boss deaths never count toward the mercy-rule streak.
+  if (s.mode === 'tower') App.deathStreak = 0;
   UI.setDead(true);
   UI.combatLog(`💀 You fell! Lost ${formatNum(lost)} gold. Reviving…`, 'death');
   UI.notify('death', `You fell! −${formatNum(lost)} gold. Reviving…`, 'error');
