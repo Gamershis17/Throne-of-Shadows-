@@ -1606,7 +1606,10 @@ function onKillEnemy() {
     UI.updateHUD(s, App.user);
     return;
   }
-  s.stage += 1;
+  // Tower: kills advance the tower (tower.floor), not the world stage —
+  // same precedent as raid staying on its stage. Advancing world stage from
+  // fixed stage-100 tower kills would inflate world progress for free.
+  if (s.mode !== 'tower') s.stage += 1;
   spawnNextEnemy();
   UI.updateHUD(s, App.user);
   // rebirth unlock may have appeared
