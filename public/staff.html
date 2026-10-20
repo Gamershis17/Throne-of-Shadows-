@@ -295,6 +295,15 @@ body.staff-page {
 .button-row { display: flex; gap: 0.8rem; flex-wrap: wrap; }
 .staff-err { min-height: 1.2em; font-size: 0.85rem; margin-top: 0.5rem; }
 
+/* Player Actions — big tap targets for mobile */
+#tab-inspect .staff-btn { min-height: 44px; }
+#tab-inspect .staff-input, #tab-inspect .staff-select { min-height: 44px; font-size: 1rem; }
+#player-actions .form-group { margin-bottom: 1.2rem; }
+@media (max-width: 640px) {
+  #tab-inspect .filter-bar { flex-wrap: wrap; }
+  #tab-inspect .filter-bar .staff-btn { flex: 1 1 100%; }
+}
+
 /* Custom Scrollbar */
 .staff-content::-webkit-scrollbar, .staff-sidebar::-webkit-scrollbar { width: 6px; height: 6px; }
 .staff-content::-webkit-scrollbar-track, .staff-sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
@@ -455,9 +464,75 @@ body.staff-page {
               <div class="button-row">
                 <button id="mod-mute-btn" class="staff-btn warning">Mute Chat (15m)</button>
                 <button id="mod-kick-btn" class="staff-btn danger">Kick from Server</button>
-                <button id="mod-ban-btn" class="staff-btn danger">Temp Ban (24h)</button>
+                <button id="mod-ban-btn" class="staff-btn danger">Ban Account</button>
+                <button id="mod-unban-btn" class="staff-btn success">Unban Account</button>
               </div>
               <div id="mod-err" class="staff-err"></div>
+            </div>
+
+            <div id="player-actions" class="sub-panel margin-top hidden">
+              <h3 class="panel-subtitle">⚡ Player Actions — <span id="pa-username" class="highlight-gold"></span></h3>
+              <div class="form-group">
+                <label class="staff-label">Give Gold (1 – 1,000,000)</label>
+                <div class="filter-bar">
+                  <input type="number" id="pa-gold-amt" class="staff-input" min="1" max="1000000" inputmode="numeric" placeholder="Amount">
+                  <button id="pa-gold-btn" class="staff-btn gold">Give Gold</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="staff-label">Set Level (1 – 255)</label>
+                <div class="filter-bar">
+                  <input type="number" id="pa-level" class="staff-input" min="1" max="255" inputmode="numeric" placeholder="Level">
+                  <button id="pa-level-btn" class="staff-btn gold">Set Level</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="staff-label">Set Gold (absolute — respects gold cap)</label>
+                <div class="filter-bar">
+                  <input type="number" id="pa-setgold-amt" class="staff-input" min="0" inputmode="numeric" placeholder="Amount">
+                  <button id="pa-setgold-btn" class="staff-btn gold">Set Gold</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="staff-label">Give Gear Item</label>
+                <div class="filter-bar">
+                  <select id="pa-item-set" class="staff-select">
+                    <option value="gamemaster">GM Set</option>
+                    <option value="dragonscale">Dragonscale</option>
+                    <option value="voidwalker">Voidwalker</option>
+                    <option value="warden">Warden</option>
+                    <option value="fateweaver">Fateweaver</option>
+                    <option value="sovereign">Sovereign (owner only)</option>
+                  </select>
+                  <select id="pa-item-slot" class="staff-select">
+                    <option value="weapon">Weapon</option>
+                    <option value="armor">Armor</option>
+                    <option value="helmet">Helmet</option>
+                    <option value="boots">Boots</option>
+                    <option value="trinket">Trinket</option>
+                  </select>
+                  <button id="pa-item-btn" class="staff-btn gold">Give Item</button>
+                </div>
+              </div>
+              <div class="button-row margin-bottom">
+                <button id="pa-heal-btn" class="staff-btn success">💚 Heal Player</button>
+              </div>
+              <div id="pa-reset-row" class="form-group hidden">
+                <label class="staff-label">Danger Zone (owner / admin)</label>
+                <div class="button-row">
+                  <button id="pa-reset-btn" class="staff-btn danger">Reset Player Save</button>
+                </div>
+              </div>
+              <div id="actions-err" class="staff-err"></div>
+            </div>
+
+            <div class="sub-panel margin-top">
+              <h3 class="panel-subtitle">📣 Server Broadcast</h3>
+              <div class="filter-bar">
+                <input type="text" id="broadcast-msg" class="staff-input" maxlength="500" placeholder="Announcement for all players...">
+                <button id="broadcast-btn" class="staff-btn info">Send</button>
+              </div>
+              <div id="broadcast-err" class="staff-err"></div>
             </div>
           </div>
         </section>
@@ -487,6 +562,6 @@ body.staff-page {
     </div>
   </div>
 
-  <script src="js/staff.js?v20261004a"></script>
+  <script src="js/staff.js?v20261009a"></script>
 </body>
 </html>
