@@ -1,5 +1,16 @@
 [
   {
+    "date": "2026-10-20",
+    "time": "03:22 PM EDT",
+    "title": "✨ NEW: Spell Ranks Are Here!",
+    "changes": [
+      "📖 SPELL RANKS: Every spell in your spellbook can now be upgraded from Rank I to Rank X! Each rank adds +15% power — damage, healing, shields, and buffs. Open the 📖 Spellbook, pick a spell, and hit Upgrade.",
+      "💰 Rank II costs 5,000 gold and each rank costs more than the last — Rank X is the ultimate endgame goal. Higher ranks unlock as you level up.",
+      "🐛 Fixed several spells whose effects weren't triggering — Druid heals-over-time (Rejuvenation, Regrowth, Tranquility), Bear Form, Cat Form, Stealth, and Evasion now work as described.",
+      "🎃 The Halloween event is still running through Oct 31 — pumpkin shards from the Demon King and every 10th Tower boss floor!"
+    ]
+  },
+  {
     "date": "2026-10-06",
     "time": "02:10 PM EDT",
     "title": "🚀 The October Update is LIVE!",
