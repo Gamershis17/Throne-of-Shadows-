@@ -5,7 +5,7 @@
 // and the in-game Staff tab toggle panel.
 // ============================================================
 
-import * as Engine from './engine.js?v=20261008a';
+import * as Engine from './engine.js?v=20261020a';
 
 // Gear sets available for GM grants (mirrors server gearSets.js).
 const GEAR_SETS = [

@@ -3,7 +3,7 @@
 // engine.js stays DOM-free; this file owns the DOM.
 // app.js?v=20261005pv wires behavior via UI.handlers.
 // ============================================================
-import * as Engine from './engine.js?v=20261008a';
+import * as Engine from './engine.js?v=20261020a';
 import { Audio } from './audio.js?v=v20261006a';
 import { api } from './api.js?v=20261007b';
 
@@ -2587,6 +2587,10 @@ export const UI = {
         .sb-wow-detail .dt-desc{color:#c9bfae;line-height:1.5;margin-bottom:12px}
         .sb-wow-detail .dt-assign{width:100%;padding:12px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-weight:bold;cursor:pointer;font-size:14px}
         .sb-wow-detail .dt-assign:hover{background:#8c4aed}
+        .sb-wow-detail .dt-rank{margin:0 0 10px 0;text-align:center;color:#f0c75e;font-weight:bold;font-size:15px}
+        .sb-wow-detail .dt-upgrade{width:100%;padding:12px;border-radius:8px;border:none;background:#b8860b;color:#fff;font-weight:bold;cursor:pointer;font-size:14px;margin-top:8px}
+        .sb-wow-detail .dt-upgrade:hover:not(:disabled){background:#d4a017}
+        .sb-wow-detail .dt-upgrade:disabled{opacity:.45;cursor:not-allowed}
         .sb-wow-slots-label{font-size:12px;color:#9a8fb5;margin-bottom:6px}
         .sb-wow-slotrow{display:flex;gap:8px}
         .sb-wow-slot{flex:1;min-width:0;padding:10px 4px;border-radius:8px;border:2px solid #3a2f52;background:#0d0a14;color:#e8dfd0;cursor:pointer;text-align:center}
@@ -2618,6 +2622,7 @@ export const UI = {
           .map(d => {
             const un = unlocked.has(d.id);
             const inSlot = slots.includes(d.id);
+            const rankInfo = un && Engine.spellRankInfo ? Engine.spellRankInfo(state, d.id) : null;
             const _icon = d.icon || (d.effect && d.effect.icon); const sIcon = _icon ? `<img src="${_icon}" class="sk-icon" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"><span class="sk-emoji" style="display:none">${d.emoji}</span>` : `<span class="sk-emoji">${d.emoji}</span>`;
             // Show cost, gain, or free (e.g., "+15 Focus" for generators like Steady Shot)
             const costText = !un ? `\u{1F512} Lv ${d.unlockLevel}`
@@ -2625,7 +2630,7 @@ export const UI = {
               : d.gain ? `${rdef.emoji} +${d.gain}` : 'free';
             return `<button class="sb-wow-spell${!un ? ' locked' : ''}${selSpell === d.id ? ' sel' : ''}" data-spell="${d.id}"${!un ? ' disabled' : ''}>` +
               sIcon +
-              `<span class="sk-info"><span class="sk-name">${esc(d.name)}${inSlot ? ' \u2713' : ''}</span>` +
+              `<span class="sk-info"><span class="sk-name">${esc(d.name)}${rankInfo && rankInfo.rank > 1 ? ` · Rank ${rankInfo.label}` : ''}${inSlot ? ' \u2713' : ''}</span>` +
               `<span class="sk-sub">${costText}</span></span>` +
               `</button>`;
           }).join('');
@@ -2643,7 +2648,13 @@ export const UI = {
         return;
       }
       const un = unlocked.has(d.id);
-      const mast = Engine.skillMastery ? Engine.skillMastery(state, d.id) : null;
+      const rankInfo = un && Engine.spellRankInfo ? Engine.spellRankInfo(state, d.id) : null;
+      const canAfford = !rankInfo || !rankInfo.nextRank || state.infGold === true || (Number(state.gold) || 0) >= rankInfo.nextCost;
+      const upDisabled = !rankInfo || !rankInfo.nextRank || !rankInfo.levelOk || !canAfford;
+      const upLabel = !rankInfo || !rankInfo.nextRank ? 'Max Rank X'
+        : !rankInfo.levelOk ? `Rank ${rankInfo.nextLabel} unlocks at Lv ${rankInfo.requiredLevel}`
+        : !canAfford ? `Upgrade to Rank ${rankInfo.nextLabel} — ${formatNum(rankInfo.nextCost)} gold (not enough)`
+        : `Upgrade to Rank ${rankInfo.nextLabel} — ${formatNum(rankInfo.nextCost)} gold`;
       el.innerHTML = `
         <span class="dt-emoji">${(() => { const ic = d.icon || (d.effect && d.effect.icon); return ic ? `<img src="${ic}" style="width:48px;height:48px;object-fit:contain" onerror="this.replaceWith(document.createTextNode('${d.emoji}'))">` : d.emoji; })()}</span>
         <h3>${esc(d.name)}</h3>
@@ -2654,8 +2665,9 @@ export const UI = {
           ${un ? '' : `<span class="dt-tag">\u{1F512} Lv ${d.unlockLevel}</span>`}
         </div>
         <div class="dt-desc">${esc(d.desc)}</div>
-        ${mast ? `<div class="dt-meta"><span class="dt-tag">Mastery: ${mast}</span></div>` : ''}
+        ${rankInfo ? `<p class="dt-rank">Rank ${rankInfo.label}${rankInfo.rank > 1 ? ` · +${Math.round((rankInfo.multiplier - 1) * 100)}% power` : ''}</p>` : ''}
         ${un ? `<button class="dt-assign" id="sb-assign">Assign to Slot ${selSlot + 1}</button>` : ''}
+        ${un && rankInfo ? `<button class="dt-upgrade" id="sb-upgrade"${upDisabled ? ' disabled' : ''}>${esc(upLabel)}</button>` : ''}
       `;
       const assignBtn = el.querySelector('#sb-assign');
       if (assignBtn) {
@@ -2664,6 +2676,15 @@ export const UI = {
           selSlot = Math.min(Engine.SPELL_SLOT_COUNT - 1, selSlot + 1);
           paintSlots();
           paintList();
+        });
+      }
+      const upBtn = el.querySelector('#sb-upgrade');
+      if (upBtn) {
+        upBtn.addEventListener('click', () => {
+          if (this.handlers.onUpgradeSpellRank && this.handlers.onUpgradeSpellRank(d.id)) {
+            paintList();
+            paintDetail();
+          }
         });
       }
     };

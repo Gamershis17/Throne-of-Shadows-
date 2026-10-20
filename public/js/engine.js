@@ -706,6 +706,7 @@ export function defaultState(race) {
     energy: 100,      // rogue resource — refills to full on load (see ensureState backfill)
     focus: 100, rage: 0, mana: 100, // hunter/warrior/mage resources (rage builds in combat)
     spellSlots: [],   // customizable 6-slot spell loadout (auto-filled per class)
+    spellRanks: {},   // Spell Ranks: spell id -> purchased rank (1-10; missing = Rank I)
     buffs: [],        // transient timed buffs (shouts, shields, blink)
     hots: [],         // druid heals-over-time
     potions: { health: 0, resource: 0 },
@@ -815,6 +816,17 @@ export function ensureState(raw) {
   if (!Array.isArray(s.companions)) s.companions = [];
   if (!['clicker', 'auto', 'dungeon'].includes(s.mode)) s.mode = 'clicker';
   s.level = Math.min(MAX_LEVEL, Math.max(1, Math.floor(s.level || 1)));
+  // Spell Ranks: keep only known spell ids with integer ranks 1..10.
+  // Rank I is the default, so only purchased ranks (II+) need storing.
+  s.spellRanks = {};
+  if (raw.spellRanks && typeof raw.spellRanks === 'object') {
+    for (const list of Object.values(CLASS_SPELLS)) {
+      for (const def of list) {
+        const r = Math.floor(Number(raw.spellRanks[def.id]) || 1);
+        if (r > 1) s.spellRanks[def.id] = Math.min(SPELL_RANK_MAX, r);
+      }
+    }
+  }
   // Legacy prestige saves: fold the old count into rebirths, drop the bonus.
   if (raw.rebirthCount === undefined && raw.prestigeCount !== undefined) s.rebirthCount = raw.prestigeCount;
   delete s.prestigeCount; delete s.prestigeBonus;
@@ -1185,6 +1197,78 @@ export function unlockedSpells(s) {
   if (!s) return [];
   return spellsForClass(s.playerClass)
     .filter(d => (s.level || 1) >= (d.unlockLevel || 1)).map(d => d.id);
+}
+
+// ---------------- Spell Ranks ----------------
+// Every spell starts at Rank I. Players buy ranks II-X with gold; each rank
+// adds +15% to that spell's effect numbers. Rank N unlocks at the spell's
+// unlock level + (N-1)*8, so ranks stay an endgame chase, and the steep
+// gold curve gives high-level gold a real sink.
+export const SPELL_RANK_MAX = 10;
+export const SPELL_RANK_BONUS = 0.15;
+export const SPELL_RANK_LEVEL_STEP = 8;
+const ROMAN_RANKS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+export function spellRankLabel(rank) {
+  const r = Math.max(1, Math.min(SPELL_RANK_MAX, Math.floor(Number(rank) || 1)));
+  return ROMAN_RANKS[r - 1];
+}
+export function spellRankRequiredLevel(def, rank) {
+  if (!def) return Infinity;
+  const r = Math.max(1, Math.min(SPELL_RANK_MAX, Math.floor(Number(rank) || 1)));
+  return (def.unlockLevel || 1) + (r - 1) * SPELL_RANK_LEVEL_STEP;
+}
+export function spellRankCost(rank) {
+  const r = Math.floor(Number(rank) || 1);
+  if (r < 2 || r > SPELL_RANK_MAX) return 0;
+  return 1000 * Math.pow(5, r - 1);
+}
+export function spellRank(state, id) {
+  const found = spellById(id);
+  if (!state || !found) return 1;
+  const stored = Math.floor(Number((state.spellRanks || {})[id]) || 1);
+  const byLevel = Math.max(1, Math.min(SPELL_RANK_MAX,
+    1 + Math.floor(Math.max(0, (state.level || 1) - (found.unlockLevel || 1)) / SPELL_RANK_LEVEL_STEP)));
+  return Math.max(1, Math.min(SPELL_RANK_MAX, stored, byLevel));
+}
+export function spellRankMultiplier(state, id) {
+  return 1 + (spellRank(state, id) - 1) * SPELL_RANK_BONUS;
+}
+export function spellRankInfo(state, id) {
+  const found = spellById(id);
+  if (!state || !found) return null;
+  const rank = spellRank(state, id);
+  const nextRank = rank < SPELL_RANK_MAX ? rank + 1 : null;
+  return {
+    rank,
+    label: spellRankLabel(rank),
+    multiplier: spellRankMultiplier(state, id),
+    nextRank,
+    nextLabel: nextRank ? spellRankLabel(nextRank) : null,
+    nextCost: nextRank ? spellRankCost(nextRank) : 0,
+    requiredLevel: nextRank ? spellRankRequiredLevel(found, nextRank) : null,
+    levelOk: nextRank ? (state.level || 1) >= spellRankRequiredLevel(found, nextRank) : false,
+  };
+}
+export function upgradeSpellRank(state, id) {
+  const found = spellById(id);
+  if (!state || !found) return { ok: false, reason: 'unknown' };
+  if (found.classId !== state.playerClass) return { ok: false, reason: 'wrong-class' };
+  if ((state.level || 1) < (found.unlockLevel || 1)) return { ok: false, reason: 'locked' };
+  if (!state.spellRanks || typeof state.spellRanks !== 'object') state.spellRanks = {};
+  // Base the purchase on the STORED rank (the effective rank is level-clamped
+  // for casting, but a purchase must never overwrite a higher bought rank).
+  const stored = Math.max(1, Math.min(SPELL_RANK_MAX, Math.floor(Number(state.spellRanks[id]) || 1)));
+  if (stored >= SPELL_RANK_MAX) return { ok: false, reason: 'max' };
+  const nextRank = stored + 1;
+  const requiredLevel = spellRankRequiredLevel(found, nextRank);
+  if ((state.level || 1) < requiredLevel) return { ok: false, reason: 'level', requiredLevel };
+  const cost = spellRankCost(nextRank);
+  if (state.infGold !== true && (Number(state.gold) || 0) < cost) {
+    return { ok: false, reason: 'gold', cost };
+  }
+  if (state.infGold !== true) state.gold = Math.max(0, Number(state.gold) - cost);
+  state.spellRanks[id] = nextRank;
+  return { ok: true, rank: nextRank, label: spellRankLabel(nextRank), cost };
 }
 // The customizable loadout: up to 6 unlocked spell ids. Auto-fills on
 // unlock; the Spell Book UI writes via setSpellSlots.

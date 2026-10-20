@@ -37,6 +37,7 @@
     if (!ok || !j.user) { $('login-err').textContent = (j && j.error) || 'Login failed.'; return; }
     const me = await api('/api/auth/me').then(r => r.j.user || r.j);
     const role = (me && me.role) || '';
+    myRole = role;
     if (!['owner', 'admin', 'gm'].includes(role)) {
       $('login-err').textContent = '⛔ Staff only. Your role: ' + (role || 'unknown');
       return;
@@ -146,12 +147,20 @@
 
   // Player Inspector
   let inspectedUser = null;
-  bind('inspect-btn', async () => {
-    const u = (($('inspect-search') || {}).value || '').trim();
-    if (!u) { setErr('inspect-err', '❌ Enter a username.'); return; }
+  let myRole = '';
+  const canResetPlayer = () => myRole === 'owner' || myRole === 'admin';
+
+  async function runInspect(u) {
     setErr('inspect-err', 'Inspecting...');
     const { ok, j } = await api('/api/gm/inspect', { method: 'POST', body: JSON.stringify({ username: u }) });
-    if (!ok) { setErr('inspect-err', '❌ ' + ((j && j.error) || 'Not found')); $('inspect-result').innerHTML = ''; return; }
+    if (!ok) {
+      setErr('inspect-err', '❌ ' + ((j && j.error) || 'Not found'));
+      $('inspect-result').innerHTML = '';
+      inspectedUser = null;
+      const pa = $('player-actions');
+      if (pa) pa.classList.add('hidden');
+      return false;
+    }
     const d = j.data || j;
     inspectedUser = d.username || u;
     $('inspect-result').innerHTML =
@@ -164,6 +173,26 @@
       '<div class="stat-row"><span>Role</span><span class="highlight-gold">' + esc(d.role || 'player') + '</span></div>' +
       '</div>';
     setErr('inspect-err', '✅ Found ' + inspectedUser, true);
+    // Reveal player actions + gate by role
+    const pa = $('player-actions');
+    if (pa) {
+      pa.classList.remove('hidden');
+      $('pa-username').textContent = inspectedUser;
+      $('pa-reset-row').classList.toggle('hidden', !canResetPlayer());
+      const setSel = $('pa-item-set');
+      if (setSel) {
+        Array.prototype.forEach.call(setSel.options, o => {
+          if (o.value === 'sovereign') o.hidden = myRole !== 'owner';
+        });
+        if (myRole !== 'owner' && setSel.value === 'sovereign') setSel.value = 'gamemaster';
+      }
+    }
+    return true;
+  }
+  bind('inspect-btn', async () => {
+    const u = (($('inspect-search') || {}).value || '').trim();
+    if (!u) { setErr('inspect-err', '❌ Enter a username.'); return; }
+    await runInspect(u);
   });
 
   // Role Manager (owner only) — give/remove GM and other staff roles
@@ -190,19 +219,82 @@
     }
   });
 
-  // Moderation actions (use existing gm endpoints where available)
-  bind('mod-mute-btn', async () => {
-    if (!inspectedUser) { setErr('mod-err', '❌ Inspect a player first.'); return; }
-    setErr('mod-err', 'Mute action — use in-game GM console for chat mute.');
+  // Moderation + player actions — wired to real /api/gm endpoints
+  function needUser(errId) {
+    if (!inspectedUser) { setErr(errId, '❌ Inspect a player first.'); return false; }
+    return true;
+  }
+  function parseAmount(id, min, max) {
+    const v = Number((($(id) || {}).value || '').trim());
+    if (!Number.isInteger(v) || v < min || v > max) return null;
+    return v;
+  }
+  // Generic player-action caller: validates target, optional confirm, posts,
+  // toasts the result, and refreshes the inspect readout on success.
+  async function paCall(path, body, errId, confirmMsg, okMsg) {
+    if (!needUser(errId)) return;
+    if (confirmMsg && !confirm(confirmMsg + '\n\nPlayer: ' + inspectedUser)) return;
+    setErr(errId, 'Working...');
+    try {
+      const { ok, j } = await api(path, { method: 'POST', body: JSON.stringify({ username: inspectedUser, ...body }) });
+      if (!ok || (j && j.error)) throw new Error((j && j.error) || 'Request failed.');
+      const live = j && j.live ? ' ⚡live' : '';
+      setErr(errId, '✅ ' + okMsg + live, true);
+      await runInspect(inspectedUser);
+    } catch (e) {
+      setErr(errId, '❌ ' + e.message);
+    }
+  }
+
+  bind('mod-mute-btn', () => paCall('/api/gm/mute', { minutes: 15 }, 'mod-err', null, 'Chat muted 15m'));
+  bind('mod-kick-btn', () => paCall('/api/gm/kick', {}, 'mod-err', 'Kick this player from the server?', 'Player kicked'));
+  bind('mod-ban-btn', () => paCall('/api/gm/ban', {}, 'mod-err', 'BAN this account? They cannot log in until unbanned.', 'Account banned'));
+  bind('mod-unban-btn', () => paCall('/api/gm/unban', {}, 'mod-err', 'Unban this account?', 'Account unbanned'));
+
+  // --- Player Actions ---
+  bind('pa-gold-btn', () => {
+    const n = parseAmount('pa-gold-amt', 1, 1000000);
+    if (n == null) { setErr('actions-err', '❌ Amount must be 1 – 1,000,000.'); return; }
+    paCall('/api/gm/grant', { kind: 'gold', amount: n }, 'actions-err', null, 'Gave ' + n.toLocaleString() + ' gold');
   });
-  bind('mod-kick-btn', async () => {
-    if (!inspectedUser) { setErr('mod-err', '❌ Inspect a player first.'); return; }
-    if (!confirm('Kick ' + inspectedUser + '?')) return;
-    setErr('mod-err', 'Kick action — use in-game GM console.');
+  bind('pa-level-btn', () => {
+    const n = parseAmount('pa-level', 1, 255);
+    if (n == null) { setErr('actions-err', '❌ Level must be 1 – 255.'); return; }
+    paCall('/api/gm/set-level', { level: n }, 'actions-err', null, 'Level → ' + n);
   });
-  bind('mod-ban-btn', async () => {
-    if (!inspectedUser) { setErr('mod-err', '❌ Inspect a player first.'); return; }
-    if (!confirm('Temp ban ' + inspectedUser + ' for 24h?')) return;
-    setErr('mod-err', 'Ban action — use in-game GM console.');
+  bind('pa-setgold-btn', () => {
+    const n = parseAmount('pa-setgold-amt', 0, 1000000000000);
+    if (n == null) { setErr('actions-err', '❌ Amount must be a non-negative integer.'); return; }
+    paCall('/api/gm/set-gold', { amount: n }, 'actions-err', null, 'Gold → ' + n.toLocaleString());
+  });
+  bind('pa-heal-btn', () => paCall('/api/gm/heal', {}, 'actions-err', null, 'Player healed'));
+  bind('pa-item-btn', () => {
+    const set = (($('pa-item-set') || {}).value || '').trim();
+    const slot = (($('pa-item-slot') || {}).value || '').trim();
+    if (!set || !slot) { setErr('actions-err', '❌ Pick a set and a slot.'); return; }
+    paCall('/api/gm/grant-item', { set, slot }, 'actions-err', null, 'Gave ' + set + ' ' + slot);
+  });
+  bind('pa-reset-btn', () => {
+    if (!canResetPlayer()) { setErr('actions-err', '❌ Owner/admin only.'); return; }
+    if (!confirm('RESET ' + inspectedUser + "'s save to a fresh account?\n\nThis wipes ALL progress and cannot be undone.")) return;
+    if (!confirm('Are you REALLY sure? Second confirmation.')) return;
+    paCall('/api/gm/reset-player', {}, 'actions-err', null, 'Player save reset');
+  });
+
+  // --- Server Broadcast (no player target needed) ---
+  bind('broadcast-btn', async () => {
+    const msg = ((($('broadcast-msg') || {}).value) || '').trim();
+    if (!msg) { setErr('broadcast-err', '❌ Enter a message.'); return; }
+    if (msg.length > 500) { setErr('broadcast-err', '❌ Max 500 characters.'); return; }
+    if (!confirm('Send this broadcast to ALL players?\n\n' + msg)) return;
+    setErr('broadcast-err', 'Sending...');
+    try {
+      const { ok, j } = await api('/api/gm/broadcast', { method: 'POST', body: JSON.stringify({ message: msg }) });
+      if (!ok || (j && j.error)) throw new Error((j && j.error) || 'Request failed.');
+      setErr('broadcast-err', '✅ Broadcast sent.', true);
+      $('broadcast-msg').value = '';
+    } catch (e) {
+      setErr('broadcast-err', '❌ ' + e.message);
+    }
   });
 })();

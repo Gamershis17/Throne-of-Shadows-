@@ -5,15 +5,15 @@ import { api } from './api.js?v=20261007b';
 // Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
 // the coordinator must add one (this module is new).
 import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261007b';
-import * as Engine from './engine.js?v=20261008a';
-import { UI, esc, formatNum } from './ui.js?v=20261008a';
+import * as Engine from './engine.js?v=20261020a';
+import { UI, esc, formatNum } from './ui.js?v=20261020a';
 import { Auth } from './auth.js?v=20261007b';
-import { GM } from './gm.js?v=20261008a';
+import { GM } from './gm.js?v=20261020a';
 
-import { Raid } from './raid.js?v=20261008a';
-import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261008a';
+import { Raid } from './raid.js?v=20261020a';
+import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261020a';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
-import { Realm } from './realm.js?v=20261008a';
+import { Realm } from './realm.js?v=20261020a';
 import { Audio } from './audio.js?v=v20261006a';
 
 const TICK_MS = 250;
@@ -206,6 +206,21 @@ async function boot() {
       saveNow();
       UI.renderSkillRow(App.state);
       UI.toast('📖 Spell loadout updated!', 'success');
+    },
+    onUpgradeSpellRank: (id) => {
+      const r = Engine.upgradeSpellRank(App.state, id);
+      const def = Engine.spellById(id);
+      if (!r.ok) {
+        if (r.reason === 'gold') UI.toast(`Not enough gold — Rank ${Engine.spellRankLabel((Engine.spellRankInfo(App.state, id) || {}).nextRank || 2)} costs ${formatNum(r.cost)} gold.`, 'warn');
+        else if (r.reason === 'level') UI.toast(`That rank unlocks at level ${r.requiredLevel}.`, 'warn');
+        else if (r.reason === 'max') UI.toast('That spell is already Rank X.', 'warn');
+        else UI.toast('That spell cannot be upgraded.', 'warn');
+        return false;
+      }
+      UI.toast(`⬆️ ${def ? def.name : 'Spell'} is now Rank ${r.label}! (+15% power)`, 'success');
+      UI.updateHUD(App.state, App.user);
+      saveNow();
+      return true;
     },
     onClaimQuest: doClaimQuest,
     onEnchant: doEnchant,
@@ -2137,7 +2152,8 @@ function useSpell(id) {
   s.stats.taps += 1;
   // Mastery (kept): same track as skills, keyed by spell id.
   const mast = Engine.recordSkillUse(s, id) || { level: 0, leveledUp: false };
-  const mMult = 1 + mast.level * Engine.MASTERY_PCT_PER_LEVEL;
+  // Spell Ranks: purchased rank multiplies every effect number below.
+  const mMult = (1 + mast.level * Engine.MASTERY_PCT_PER_LEVEL) * Engine.spellRankMultiplier(s, id);
   if (mast.leveledUp) {
     UI.toast(`🎯 ${def.name} Mastery ${mast.level}! +${Math.round(mast.level * Engine.MASTERY_PCT_PER_LEVEL * 100)}% effectiveness`, 'success');
   }
@@ -2172,9 +2188,10 @@ function useSpell(id) {
         const pet = (p.collection || []).find(x => x.uid === uid);
         if (pet) pet.hunger = 100;
       }
-      if (fx.petDmgPct) Engine.addBuff(s, 'petDmgPct', fx.petDmgPct, fx.sec);
+      const petPct = fx.petDmgPct ? Math.round(fx.petDmgPct * mMult) : 0;
+      if (petPct) Engine.addBuff(s, 'petDmgPct', petPct, fx.sec);
       UI.floatText('MENDED', 'heal');
-      UI.combatLog(`💚 Mend Pet! Pets restored and inspired (+${fx.petDmgPct || 0}% damage).`, 'heal');
+      UI.combatLog(`💚 Mend Pet! Pets restored and inspired (+${petPct}% damage).`, 'heal');
       break;
     }
     case 'petStrike': {
@@ -2184,7 +2201,7 @@ function useSpell(id) {
       UI.combatLog(`🐺 Kill Command! Your pet strikes for ${formatNum(dmg)}.`, 'skill');
       // Apply bleed debuff if specified
       if (App.enemy && fx.debuffKind) {
-        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.25));
+        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.25) * mMult);
         Engine.addDebuff(App.enemy, fx.debuffKind, dotValue, fx.debuffSec || 10);
         const def = Engine.DEBUFF_DEFS[fx.debuffKind];
         UI.combatLog(`${def.icon} ${def.name} applied to enemy!`, 'skill');
@@ -2200,25 +2217,25 @@ function useSpell(id) {
         App.enemy.fx = App.enemy.fx || [];
         if (fx.dotMult) App.enemy.fx.push({ kind: 'dot', mult: fx.dotMult * mMult,
           ticksLeft: fx.dotTicks, everyMs: fx.dotEveryMs, nextAt: Date.now() + fx.dotEveryMs });
-        if (fx.slowPct) App.enemySlow = { pct: fx.slowPct, until: Date.now() + (fx.slowSec || 0) * 1000 };
+        if (fx.slowPct) App.enemySlow = { pct: Math.min(90, Math.round(fx.slowPct * mMult)), until: Date.now() + (fx.slowSec || 0) * 1000 };
       }
       break;
     }
     case 'shield': {
-      Engine.addShield(s, Math.round(stats.maxHp * (fx.pct / 100)), fx.sec);
+      Engine.addShield(s, Math.min(stats.maxHp, Math.round(stats.maxHp * (fx.pct / 100) * mMult)), fx.sec);
       UI.combatLog(`🛡️ Shield Block! Absorbing damage for ${fx.sec}s.`, 'skill');
       break;
     }
     case 'shout': {
-      if (fx.atkPct) Engine.addBuff(s, 'atkPct', fx.atkPct, fx.sec);
-      if (fx.dmgTakenPct) Engine.addBuff(s, 'dmgTakenPct', fx.dmgTakenPct, fx.sec);
+      if (fx.atkPct) Engine.addBuff(s, 'atkPct', Math.round(fx.atkPct * mMult), fx.sec);
+      if (fx.dmgTakenPct) Engine.addBuff(s, 'dmgTakenPct', Math.max(-75, Math.round(fx.dmgTakenPct * mMult)), fx.sec);
       UI.combatLog(`📯 ${def.name}!`, 'skill');
       break;
     }
     case 'debuff': {
       if (fx.mult) heroStrike(stats, fx.mult * mMult);
       if (App.enemy && fx.debuffKind) {
-        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.5));
+        const dotValue = Math.round(stats.attack * (fx.debuffMult || 0.5) * mMult);
         Engine.addDebuff(App.enemy, fx.debuffKind, dotValue, fx.debuffSec || 10);
         const def = Engine.DEBUFF_DEFS[fx.debuffKind];
         UI.combatLog(`${def.icon} ${def.name} applied to enemy!`, 'skill');
@@ -2227,8 +2244,29 @@ function useSpell(id) {
       break;
     }
     case 'dodge': {
-      Engine.addBuff(s, 'dodgePct', fx.pct, fx.sec);
-      UI.combatLog(`💫 Blink! +${fx.pct}% dodge for ${fx.sec}s.`, 'skill');
+      const dodgePct = Math.min(90, Math.round((fx.dodgePct ?? fx.pct ?? 0) * mMult));
+      Engine.addBuff(s, 'dodgePct', dodgePct, fx.sec);
+      UI.combatLog(`💫 ${def.name}! +${dodgePct}% dodge for ${fx.sec}s.`, 'skill');
+      break;
+    }
+    case 'hot': {
+      Engine.addHot(s, {
+        ...fx,
+        instantPct: fx.instantPct ? fx.instantPct * mMult : 0,
+        healPct: fx.healPct ? fx.healPct * mMult : 0,
+      });
+      UI.combatLog(`💚 ${def.name}! Healing over time.`, 'heal');
+      break;
+    }
+    case 'form': {
+      Engine.addForm(s, {
+        ...fx,
+        hpPct: fx.hpPct ? fx.hpPct * mMult : 0,
+        defPct: fx.defPct ? fx.defPct * mMult : 0,
+        atkPct: fx.atkPct ? fx.atkPct * mMult : 0,
+        atkSpdPct: fx.atkSpdPct ? fx.atkSpdPct * mMult : 0,
+      });
+      UI.combatLog(`🐾 ${def.name}!`, 'skill');
       break;
     }
   }
