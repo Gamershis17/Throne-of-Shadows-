@@ -7075,3 +7075,44 @@ body.theme-gothic-manor .panel, body.theme-gothic-manor .card {
 .vendor-item { display: flex; align-items: center; gap: 10px; background: #1a1428; border-radius: 8px; padding: 8px 10px; }
 .vendor-emoji { font-size: 28px; }
 .vendor-info { flex: 1; font-size: 13px; display: flex; flex-direction: column; }
+
+/* ---------- Staff revamp (2026-10-25): GM console layout, scoped ---------- */
+/* Staff card in Settings: gold border + role badge. */
+#gm-entry-card.gm-staff-card {
+  border: 2px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(212, 175, 55, 0.12);
+}
+#gm-entry-card #gm-role-badge { margin-left: 0.4rem; vertical-align: middle; }
+/* GM header: sticky (reinforces the base .gm-header rule), wraps on phones. */
+#view-gm .gm-header {
+  position: sticky; top: 0; z-index: 20; flex-wrap: wrap;
+}
+#view-gm .gm-target-chip {
+  margin-left: auto; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.8rem; color: var(--gold); border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 999px; padding: 0.3rem 0.7rem; background: rgba(0, 0, 0, 0.35);
+}
+/* Jump chips ride the already-sticky target card, so they stay visible
+   while scrolling; horizontal scroll + 44px tap targets on phones. */
+#gm-content .gm-jump .btn { min-height: 44px; padding: 0.55rem 0.9rem; }
+/* Quick actions grid: 2 columns on phones, 4 on wide screens. */
+#gm-content .gm-quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+#gm-content .gm-quick-grid .btn { width: 100%; min-height: 48px; font-size: 0.95rem; }
+@media (min-width: 700px) {
+  #gm-content .gm-quick-grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* Collapsible sections: header toggles, chevron indicator, body hides. */
+#gm-content .gm-sec > h3 { cursor: pointer; }
+#gm-content .gm-sec > h3::after { content: '▾'; margin-left: auto; font-size: 0.8rem; color: var(--gold); }
+#gm-content .gm-sec.collapsed > h3::after { content: '▸'; }
+#gm-content .gm-sec.collapsed > :not(h3) { display: none; }
+/* Danger zone: reset card gets a red trim. */
+#gm-content .gm-sec.gm-danger { border-color: rgba(244, 67, 54, 0.5); }
+#gm-content .gm-sec.gm-danger > h3 { color: #ff8a80; }
+/* Bug report rows. */
+#gm-content .gm-bug-row {
+  border: 1px solid rgba(212, 175, 55, 0.14); border-radius: 10px;
+  padding: 0.6rem 0.8rem; margin-bottom: 0.6rem; background: rgba(0, 0, 0, 0.25);
+}
+#gm-content .gm-bug-head { display: flex; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+#gm-content .gm-bug-row p { margin: 0.3rem 0 0.5rem; }
