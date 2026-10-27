@@ -1006,12 +1006,12 @@ function applyWorldMusic() {
   }
 }
 
-// Dynamic event icon: Halloween pumpkin during Oct, default otherwise.
+// App icon: dragon branding (replaces the seasonal Halloween/default swap).
 function applyEventIcon() {
   try {
     const halloween = Engine.isEventActive && Engine.isEventActive('HALLOWEEN');
-    const iconPath = halloween ? 'icons/icon-halloween-192.png' : 'icons/icon-192.v2.png';
-    const applePath = halloween ? 'icons/icon-halloween-apple.png' : 'icons/apple-touch-icon.v2.png';
+    const iconPath = 'icons/icon-dragon-192.png';
+    const applePath = 'icons/apple-touch-icon-dragon.png';
     // Update favicon
     let favicon = document.querySelector('link[rel="icon"]');
     if (!favicon) {
