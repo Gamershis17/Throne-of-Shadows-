@@ -1,19 +1,19 @@
 // ============================================================
 // app.js?v=v20261006a — boot, session flow, game loops, combat wiring.
 // ============================================================
-import { api } from './api.js?v=20261007b';
+import { api } from './api.js?v=20261027a';
 // Oct 10 batch — TEST MODE (?test=1&preview=1). NOTE: no ?v= tag here yet;
 // the coordinator must add one (this module is new).
 import { isTestMode, TEST_ROLE, clearTestState, saveTestState, showTestBadge } from './testmode.js?v=20261007b';
 import * as Engine from './engine.js?v=20261020a';
-import { UI, esc, formatNum } from './ui.js?v=20261020a';
-import { Auth } from './auth.js?v=20261007b';
-import { GM } from './gm.js?v=20261020a';
+import { UI, esc, formatNum } from './ui.js?v=20261027a';
+import { Auth } from './auth.js?v=20261027a';
+import { GM } from './gm.js?v=20261027a';
 
 import { Raid } from './raid.js?v=20261020a';
-import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261020a';
+import { renderGuildSection, syncGuildPerks } from './guild.js?v=20261027a';
 import { loadGuest, saveGuest, clearGuest, GUEST_ROLE } from './guest.js?v=20260930ar';
-import { Realm } from './realm.js?v=20261020a';
+import { Realm } from './realm.js?v=20261027a';
 import { Audio } from './audio.js?v=v20261006a';
 
 const TICK_MS = 250;

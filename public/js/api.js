@@ -191,6 +191,9 @@ export const api = {
   gmNameStyle: (username, color, fx) => post('/api/gm/name-style', { username, color, fx }),
   gmInspect: (username) => post('/api/gm/inspect', { username }),
   gmAudit: () => request('/api/gm/audit'),
+  gmReports: (kind) => request('/api/gm/reports?kind=' + encodeURIComponent(kind || 'bug')),
+  gmReportStatus: (id, status) =>
+    request('/api/gm/reports/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify({ status }) }),
   gmInventory: (username) => post('/api/gm/inventory', { username }),
   gmRemoveItem: (username, index) => post('/api/gm/remove-item', { username, index }),
   gmModItem: (username, itemId, stats, name) => post('/api/gm/mod-item', { username, itemId, stats, name }),

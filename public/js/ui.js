@@ -5,7 +5,7 @@
 // ============================================================
 import * as Engine from './engine.js?v=20261020a';
 import { Audio } from './audio.js?v=v20261006a';
-import { api } from './api.js?v=20261007b';
+import { api } from './api.js?v=20261027a';
 
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
@@ -6775,7 +6775,14 @@ export const UI = {
     this._settingsState = state || null; // for the name-fx lock picker
     this._renderNameStylePickers(state); // refresh token-fx lock badges
     const canGM = role === 'owner' || role === 'gm' || role === 'admin' || role === 'moderator';
-    // gm-entry-card removed from Settings (in-game toolkit instead)
+    // Staff card in Settings: visible to staff only, opens the GM console.
+    const entryCard = document.getElementById('gm-entry-card');
+    if (entryCard) entryCard.classList.toggle('hidden', !canGM);
+    const roleBadge = document.getElementById('gm-role-badge');
+    if (roleBadge) {
+      roleBadge.textContent = String(role).toUpperCase();
+      roleBadge.className = 'role-badge role-' + role;
+    }
     // Staff tab in the main nav: visible to staff only, opens the GM console.
     const staffBtn = document.getElementById('tabbtn-staff');
     if (staffBtn) staffBtn.classList.toggle('hidden', !canGM);

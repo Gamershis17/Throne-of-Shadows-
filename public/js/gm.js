@@ -1,8 +1,8 @@
 // ============================================================
 // gm.js?v=20261005pv — GM console UI. Only opened for staff roles.
 // ============================================================
-import { api } from './api.js?v=20261007b';
-import { UI, esc, formatNum } from './ui.js?v=20261020a';
+import { api } from './api.js?v=20261027a';
+import { UI, esc, formatNum } from './ui.js?v=20261027a';
 import { PRIVILEGED_SETS, TITLES, BADGES, CLASSES, SPECS } from './engine.js?v=20261020a';
 
 const SET_IDS = Object.keys(PRIVILEGED_SETS);
@@ -132,19 +132,6 @@ export const GM = {
     const on = (id, evt, fn) => { const el = $(id); if (el) el.addEventListener(evt, fn); };
     // ---- Command Center (owner only) ----
     this.initCommandCenter(root, $, on);
-    // 2x event toggle
-    on('gm-toggle-2x', 'click', () => {
-      const s = window.App && window.App.state;
-      if (!s) return;
-      const is2x = (s.xpMultiplier || 1.0) >= 2.0;
-      s.xpMultiplier = is2x ? 1.0 : 2.0;
-      s.goldMultiplier = is2x ? 1.0 : 2.0;
-      if (window.UI) {
-        window.UI.toast(is2x ? '2x event OFF' : '🔥 2x XP & Gold ON!', is2x ? 'info' : 'success');
-        if (window.UI.updateHUD) window.UI.updateHUD(s, window.App.user);
-      }
-      if (window.saveNow) window.saveNow();
-    });
     // ID reference toggle
     let idrefLoaded = false;
     on('gm-idref-toggle', 'click', async () => {
@@ -233,6 +220,46 @@ export const GM = {
       });
     });
 
+    // Sticky header target chip + role badge (layout only; no powers change).
+    const chipEl = document.getElementById('gm-target-chip');
+    const updateTargetChip = () => {
+      if (!chipEl) return;
+      const input = $('gm-target-user');
+      const u = input ? input.value.trim() : '';
+      chipEl.textContent = u ? '🎯 ' + u : 'No target';
+    };
+    const hdrRole = document.getElementById('gm-header-role');
+    if (hdrRole) {
+      const hr = (this.me && this.me.role) || 'player';
+      hdrRole.textContent = String(hr).toUpperCase();
+      hdrRole.className = 'role-badge role-' + hr;
+    }
+    updateTargetChip();
+
+    // Quick actions: one-tap triggers for the existing player buttons.
+    // If an original button is absent for this role, hide its quick button.
+    [['gm-quick-heal', 'gm-player-heal-btn'], ['gm-quick-godmode', 'gm-godmode-btn'],
+     ['gm-quick-pause', 'gm-pause-auto-btn'], ['gm-quick-mute', 'gm-player-mute-btn']].forEach(([quickId, origId]) => {
+      const qb = $(quickId);
+      if (!qb) return;
+      const ob = $(origId);
+      if (!ob) { qb.classList.add('hidden'); return; }
+      qb.addEventListener('click', () => ob.click());
+    });
+
+    // Collapsible sections: tapping a section header folds it (layout only;
+    // all ids and handlers stay exactly where they were). Guarded like the
+    // player-list pick binding so re-renders never stack duplicate listeners.
+    if (!root.dataset.gmCollapseBound) {
+      root.dataset.gmCollapseBound = '1';
+      root.addEventListener('click', (e) => {
+        const h3 = e.target && e.target.closest ? e.target.closest('.gm-sec > h3') : null;
+        if (!h3) return;
+        const card = h3.parentElement;
+        if (card) card.classList.toggle('collapsed');
+      });
+    }
+
     // ---- single target player for every action ----
     const needTarget = () => {
       const el = $('gm-target-user');
@@ -246,6 +273,7 @@ export const GM = {
       if (info) info.textContent = 'Every action below applies to this player. It stays filled until you clear it.';
       const dz = $('gm-dossier');
       if (dz) { dz.innerHTML = ''; dz.classList.add('hidden'); }
+      updateTargetChip();
     });
 
     // ---- action log: every console action lands here with its exact result,
@@ -325,6 +353,7 @@ export const GM = {
       const info = `${p.username} — Lv ${p.level} ${cls} · stage ${p.stage} · ${p.role}`;
       const infoEl = $('gm-target-info');
       if (infoEl) infoEl.textContent = '✅ ' + info;
+      updateTargetChip();
       return info;
     }));
 
@@ -476,6 +505,7 @@ export const GM = {
       if (!username) return null;
       const res = await api.gmInspect(username);
       renderDossier(res.dossier);
+      updateTargetChip();
       return `📋 Dossier loaded for ${res.dossier.username}.`;
     }));
 
@@ -912,6 +942,7 @@ export const GM = {
         if (!row) return;
         const t = $('gm-target-user');
         if (t) t.value = row.dataset.username;
+        updateTargetChip();
         UI.toast(`Target: ${row.dataset.username}`, 'info');
       });
     }
@@ -1145,6 +1176,54 @@ export const GM = {
       refreshEventBuff();
       return '🛑 Event buff cleared.';
     }));
+
+    // ---- bug reports (owner|admin): open bugs + mark resolved ----
+    // Marking resolved sets the backend status to 'fixed' (the backend's
+    // REPORT_STATUSES has no 'resolved' value: new/reviewing/fixed/closed).
+    const loadBugs = async () => {
+      const list = $('gm-bugs-list');
+      if (!list) return;
+      list.innerHTML = '<p class="muted small">Loading…</p>';
+      try {
+        const { reports = [] } = await api.gmReports('bug');
+        const open = reports.filter(r => r.status === 'new' || r.status === 'reviewing');
+        if (!open.length) { list.innerHTML = '<p class="muted small">No open bug reports.</p>'; return; }
+        list.innerHTML = open.map(r => {
+          const when = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+          const body = String(r.body || '');
+          const snippet = body.length > 160 ? body.slice(0, 160) + '…' : body;
+          return `<div class="gm-bug-row" data-report-id="${r.id}">
+            <div class="gm-bug-head"><b>${esc(r.title || ('Report #' + r.id))}</b>
+            <span class="muted small">${esc(r.username || '')} · ${esc(when)} · ${esc(r.status)}</span></div>
+            <p class="muted small">${esc(snippet)}</p>
+            <button class="btn small" data-bug-resolve="${r.id}">✅ Mark resolved</button>
+          </div>`;
+        }).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="error small">Couldn't load bug reports: ${esc((err && err.message) || 'failed')}.</p>`;
+      }
+    };
+    on('gm-bugs-refresh', 'click', loadBugs);
+    if ($('gm-bugs-list')) loadBugs();
+    const bugsList = $('gm-bugs-list');
+    if (bugsList && !bugsList.dataset.bugsBound) {
+      bugsList.dataset.bugsBound = '1';
+      bugsList.addEventListener('click', async (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('[data-bug-resolve]') : null;
+        if (!btn) return;
+        const id = Number(btn.dataset.bugResolve);
+        if (!Number.isInteger(id) || id < 1) return;
+        btn.disabled = true;
+        try {
+          await api.gmReportStatus(id, 'fixed');
+          UI.toast('Report marked fixed.', 'success');
+          loadBugs();
+        } catch (err) {
+          UI.toast((err && err.message) || 'Update failed.', 'error');
+          btn.disabled = false;
+        }
+      });
+    }
   },
 
   async render() {
@@ -1256,14 +1335,6 @@ ${PV ? '' : `
         <div id="gm-idref-panel" class="hidden" style="margin-top:8px"></div>
       </div>
 
-${PV ? '' : `
-      <div class="card" style="margin-bottom:12px">
-        <h4 style="margin:0 0 8px">⚡ Event Multipliers</h4>
-        <button id="gm-toggle-2x" class="btn small" style="width:100%">⚡ TOGGLE 2X EVENT</button>
-        <div class="muted small" style="margin-top:4px">Toggles 2x XP and 2x Gold for your session.</div>
-      </div>
-      `}
-
       ${canTarget ? `
       <div class="card gm-target" style="position:sticky;top:0;z-index:5">
         <div class="row" style="align-items:flex-end">
@@ -1277,15 +1348,27 @@ ${PV ? '' : `
         <div id="gm-dossier" class="gm-dossier hidden"></div>
         <div class="gm-jump">
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-audit">📜 Audit</button>' : ''}
+        ${(!PV && admin) ? '<button class="btn small ghost" data-goto="gm-sec-bugs">🐛 Bugs</button>' : ''}
+        ${'<button class="btn small ghost" data-goto="gm-sec-quick">⚡ Quick</button>'}
         ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-event">🎉 Event</button>' : ''}
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-grants">🎁 Grants</button>' : ''}
-        ${gm ? '<button class="btn small ghost" data-goto="gm-sec-inventory">🎒 Inventory</button>' : ''}
-        ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-values">🎚️ Values</button>' : ''}
+        ${gm ? '<button class="btn small ghost" data-goto="gm-sec-inventory">🎒 Bags</button>' : ''}
+        ${(!PV && (gm || admin)) ? '<button class="btn small ghost" data-goto="gm-sec-values">🔄 Reset Player Stats</button>' : ''}
         ${'<button class="btn small ghost" data-goto="gm-sec-player">🛠️ Player</button>'}
         ${(!PV && gm) ? '<button class="btn small ghost" data-goto="gm-sec-codes">🎟️ Codes</button>' : ''}
         ${(mod || gm) ? '<button class="btn small ghost" data-goto="gm-sec-mod">📣 Mod</button>' : ''}
         ${gm ? '<button class="btn small ghost" data-goto="gm-sec-staff">👥 Staff</button>' : ''}
         ${(!PV && isOwner) ? '<button class="btn small ghost" data-goto="gm-sec-server">⚙️ Server</button>' : ''}
+        </div>
+      </div>
+
+      <div class="card gm-sec" id="gm-sec-quick"><h3>⚡ Quick actions</h3>
+        <p class="muted small">One-tap versions of the most-used player powers — they act on the target above.</p>
+        <div class="gm-quick-grid">
+          <button id="gm-quick-heal" class="btn gold">💚 Heal</button>
+          <button id="gm-quick-godmode" class="btn">✨ God Mode</button>
+          <button id="gm-quick-pause" class="btn">⏸️ Pause Auto-Atk</button>
+          <button id="gm-quick-mute" class="btn">🔇 Mute</button>
         </div>
       </div>
 
@@ -1295,7 +1378,7 @@ ${PV ? '' : `
       ` : ''}
 
       ${gm ? `
-      <div class="card" id="gm-sec-audit"><h3>📜 Staff audit log</h3>
+      <div class="card gm-sec" id="gm-sec-audit"><h3>📜 Staff audit log</h3>
         <p class="muted small">Server-side record of every staff action — survives restarts, so you can see what other GMs did.</p>
         <div class="row">
           <button id="gm-audit-refresh" class="btn small">🔄 Refresh</button>
@@ -1304,8 +1387,18 @@ ${PV ? '' : `
       </div>
       ` : ''}
 
+      ${(!PV && admin) ? `
+      <div class="card gm-sec" id="gm-sec-bugs"><h3>🐛 Bugs</h3>
+        <p class="muted small">Open player bug reports — newest first. Marking one resolved sets it to fixed.</p>
+        <div class="row">
+          <button id="gm-bugs-refresh" class="btn small">🔄 Refresh</button>
+        </div>
+        <div id="gm-bugs-list" class="gm-log"><p class="muted small">Tap Refresh to load.</p></div>
+      </div>
+      ` : ''}
+
       ${(!PV && gm) ? `
-      <div class="card" id="gm-sec-event"><h3>🎉 Server event buff</h3>
+      <div class="card gm-sec" id="gm-sec-event"><h3>🎉 Server event buff</h3>
         <p class="muted small">Server-wide XP/gold multiplier — e.g. a double-XP weekend. Players see it when they log in.</p>
         <div class="row">
           <label class="fld"><span>Label</span>
@@ -1325,7 +1418,7 @@ ${PV ? '' : `
       </div>
 
       ${gm ? `
-      <div class="card" id="gm-sec-grants"><h3>🎁 Grants</h3>
+      <div class="card gm-sec" id="gm-sec-grants"><h3>🎁 Grants</h3>
 ${PV ? '' : `
         <h4 class="gm-sub">Currency &amp; gear</h4>
         <div class="row">
@@ -1438,8 +1531,8 @@ ${PV ? '' : `
       ` : ''}
 
       ${gm ? `
-      <div class="card" id="gm-sec-inventory"><h3>🎒 Target inventory</h3>
-        ${PV ? '<p class="muted small">Browse the target\'s full inventory.</p>' : '<p class="muted small">Browse the target\'s full inventory, set enchant levels, or remove items.</p>'}
+      <div class="card gm-sec" id="gm-sec-inventory"><h3>🎒 Bags</h3>
+        ${PV ? '<p class="muted small">Browse the target\'s bag contents.</p>' : '<p class="muted small">Browse the target\'s bag contents, set enchant levels, or remove items.</p>'}
         <div class="row">
           <button id="gm-inv-load" class="btn small">🔄 Load inventory</button>
           <span class="muted small" id="gm-inv-count"></span>
@@ -1465,10 +1558,11 @@ ${PV ? '<p class="muted small">Enchant and item removal are disabled in this pre
       </div>
       ` : ''}
 
-      ${(!PV && gm) ? `
-      <div class="card" id="gm-sec-values"><h3>🎚️ Set values</h3>
-        <p class="muted small">Set a value directly on the target player (not added — replaced).</p>
-        <div class="row">
+      ${(!PV && (gm || admin)) ? `
+      <div class="card gm-sec gm-danger" id="gm-sec-values"><h3>🔄 Reset Player Stats</h3>
+        ${gm ? `<p class="muted small">Set a value directly on the target player (not added — replaced).</p>` : ''}
+        <p class="muted small">⚠️ Danger zone: Reset player wipes the target's progress back to a fresh hero (keeps account &amp; role). This cannot be undone.</p>
+        ${gm ? `<div class="row">
           <label class="fld"><span>Level (1–120)</span>
             <input id="gm-set-level" type="number" min="1" max="120" value="1"></label>
           <button id="gm-set-level-btn" class="btn small" style="align-self:flex-end">⬆️ Set level</button>
@@ -1483,13 +1577,17 @@ ${PV ? '<p class="muted small">Enchant and item removal are disabled in this pre
           <label class="fld"><span>XP (exact)</span>
             <input id="gm-set-xp" type="number" min="0" step="1" value="0"></label>
           <button id="gm-set-xp-btn" class="btn small" style="align-self:flex-end">✨ Set XP</button>
+        </div>` : ''}
+        <div class="row" style="margin-top:0.6rem">
+          <span class="muted small" style="align-self:center;flex:1;min-width:220px">♻️ Reset player wipes the target's progress back to a fresh hero (keeps account &amp; role).</span>
+          <button id="gm-player-reset-btn" class="btn small danger" style="align-self:flex-end">♻️ Reset player</button>
         </div>
-        <p class="muted small">Set level rebuilds the hero's base stats for that level and heals to full. Set gold to 0 to clear it.</p>
+        ${gm ? `<p class="muted small">Set level rebuilds the hero's base stats for that level and heals to full. Set gold to 0 to clear it.</p>` : ''}
       </div>
       ` : ''}
 
       ${(gm || admin) ? `
-      <div class="card" id="gm-sec-player"><h3>🛠️ Player</h3>
+      <div class="card gm-sec" id="gm-sec-player"><h3>🛠️ Player</h3>
 ${PV ? '' : `
         <div class="row">
           <label class="fld"><span>Set stage (1–10000)</span>
@@ -1508,7 +1606,6 @@ ${PV ? '' : `
           <button id="gm-player-ban-btn" class="btn small danger">🔨 Ban</button>
           <button id="gm-player-unban-btn" class="btn small">🔓 Unban</button>
           <button id="gm-player-kick-btn" class="btn small danger">👢 Kick</button>
-          <button id="gm-player-reset-btn" class="btn small danger">♻️ Reset player</button>
           ${isOwner ? `<button id="gm-player-delete-btn" class="btn small danger">🗑️ Delete account</button>` : ''}
           `}
         </div>
@@ -1540,7 +1637,7 @@ ${PV ? '' : `
       ` : ''}
 
       ${(!PV && gm) ? `
-      <div class="card" id="gm-sec-codes"><h3>🎟️ Gift codes</h3>
+      <div class="card gm-sec" id="gm-sec-codes"><h3>🎟️ Gift codes</h3>
         <div class="row">
           <label class="fld"><span>Reward</span>
             <select id="gm-code-kind">
@@ -1560,7 +1657,7 @@ ${PV ? '' : `
       ` : ''}
 
       ${(mod || gm) ? `
-      <div class="card" id="gm-sec-mod"><h3>📣 Moderation</h3>
+      <div class="card gm-sec" id="gm-sec-mod"><h3>📣 Moderation</h3>
         <label class="fld"><span>Broadcast message (1–500 chars, seen by all players)</span>
           <input id="gm-bc-msg" placeholder="Announcement…" maxlength="500" autocomplete="off"></label>
         <button id="gm-bc-send" class="btn gold wide">Send broadcast</button>
@@ -1576,7 +1673,7 @@ ${PV ? '' : `
       ` : ''}
 
       ${gm ? `
-      <div class="card" id="gm-sec-staff"><h3>👥 Staff</h3>
+      <div class="card gm-sec" id="gm-sec-staff"><h3>👥 Staff</h3>
         <h4 class="gm-sub">Admin roster</h4>
         <p class="muted small">Admins are entitled to the Warden Arsenal (in-game status, no console).</p>
         <div class="row">
@@ -1601,7 +1698,7 @@ ${PV ? '' : `
       ` : ''}
 
       ${(!PV && isOwner) ? `
-      <div class="card" id="gm-sec-server"><h3>⚙️ Server <span class="muted small">(owner only)</span></h3>
+      <div class="card gm-sec" id="gm-sec-server"><h3>⚙️ Server <span class="muted small">(owner only)</span></h3>
         <h4 class="gm-sub">Maintenance mode</h4>
         <div class="row">
           <label class="fld"><span>Message shown to players</span>
