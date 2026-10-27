@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Throne of Shadows">
   <title>Throne of Shadows</title>
-  <link rel="stylesheet" href="css/style.css?v=20261007b">
+  <link rel="stylesheet" href="css/style.css?v=20261027a">
 <style id="wow-login-css">
 #view-auth.wow-login{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
 #view-auth.wow-login.hidden{display:none !important}
@@ -669,9 +669,10 @@
             <button id="redeem-btn" class="btn">Redeem</button>
           </div>
         </div>
-        <div class="card hidden" id="gm-entry-card">
-          <h3>🛠️ Staff</h3>
-          <button id="gm-open-btn" class="btn wide">Open GM Console</button>
+        <div class="card hidden gm-staff-card" id="gm-entry-card">
+          <h3>🛠️ Staff <span id="gm-role-badge" class="role-badge"></span></h3>
+          <p class="muted small">Player actions, grants, events and logs.</p>
+          <button id="gm-open-btn" class="btn gold wide">Open GM Console</button>
         </div>
         <div class="card">
           <h3>⚙️ Settings</h3>
@@ -812,6 +813,8 @@
     <header class="gm-header">
       <button id="gm-back" class="btn small ghost">← Back</button>
       <h2>🛠️ GM Console</h2>
+      <span id="gm-target-chip" class="gm-target-chip">No target</span>
+      <span id="gm-header-role" class="role-badge"></span>
     </header>
     <div id="gm-content" class="gm-content"></div>
   </section>
@@ -823,7 +826,7 @@
 <div id="toast-root"></div>
 
 <script src="js/preview.js?v=v20261006a"></script>
-<script type="module" src="js/app.js?v=20261020a"></script>
+<script type="module" src="js/app.js?v=20261027a"></script>
 <script src="js/f5-panel.js?v=20261008a"></script>
 <script type="module" src="js/gamepad.js?v=v20261006a"></script>
 </body>
